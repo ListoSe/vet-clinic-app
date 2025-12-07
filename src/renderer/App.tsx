@@ -1,7 +1,9 @@
-import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
+import { MemoryRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Login from './Login';
 import icon from '../../assets/icon.svg';
 import './App.css';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function Hello() {
   return (
     <div>
@@ -34,16 +36,24 @@ function Hello() {
             Donate
           </button>
         </a>
+        <button type="button">
+          <Link to="/serega-tupit">SEREGA TUPIT</Link>
+        </button>
       </div>
     </div>
   );
+}
+
+function SeregaTupit() {
+  return <div>SEREGA TUPIT</div>;
 }
 
 export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Hello />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/serega-tupit" element={<SeregaTupit />} />
       </Routes>
     </Router>
   );
