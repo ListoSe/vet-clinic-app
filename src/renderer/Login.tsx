@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const styles: { [key: string]: React.CSSProperties } = {
   form: {
@@ -21,6 +22,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '4px',
     border: '1px solid #ccc',
   },
+  checkbox: {
+    color: 'black',
+    textAlign: 'right',
+  },
   buttons: {
     display: 'flex',
     gap: '20px',
@@ -40,13 +45,25 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: '1rem',
     textAlign: 'center',
   },
+  backButton: {
+    width: '2rem',
+    padding: '0',
+  },
 };
 
-export default function Login() {
+const users = [
+  { role: 'admin', email: 'admin@mail.com', password: '1234' },
+  { role: 'vet', email: 'vet@mail.com', password: '1234' },
+];
+
+export default function Login({ setUser }: { setUser: any }) {
+  const navigate = useNavigate();
+
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +74,20 @@ export default function Login() {
       return;
     }
 
+    const user = users.find(
+      (u) => u.email === email && u.password === password && u.role === role,
+    );
+
+    if (!user) {
+      setError('Неверный логин или пароль!');
+      return;
+    }
+
     setError('');
-    console.log('Email:', email, 'Password:', password);
-    alert('Вход выполнен (симуляция)');
+    setUser(user);
+
+    if (role === 'vet') navigate('/vet');
+    if (role === 'admin') navigate('/admin');
   };
 
   if (!role) {
@@ -81,7 +109,16 @@ export default function Login() {
   return (
     <div>
       <form onSubmit={handleSubmit} style={styles.form}>
-        <h2 style={styles.title}>Login</h2>
+        <button
+          type="button"
+          style={styles.backButton}
+          onClick={() => setRole('')}
+        >
+          &larr;
+        </button>
+        <h2 style={styles.title}>
+          {role === 'admin' ? 'Вітаю Адмін' : 'Вітаю Ветеринар'}
+        </h2>
 
         {error && <p style={styles.error}>{error}</p>}
 
@@ -100,9 +137,19 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           style={styles.input}
         />
+        <label htmlFor="rememberMe" style={styles.checkbox}>
+          <input
+            id="rememberMe"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            style={{ ...styles.checkbox, ...styles.input }}
+          />
+          Запам&apos;ятати мене
+        </label>
 
         <button type="submit" style={styles.button}>
-          Sign In
+          Увійти
         </button>
       </form>
     </div>

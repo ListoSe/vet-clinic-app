@@ -1,5 +1,15 @@
-import { MemoryRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import React, { JSX, useState } from 'react';
+import {
+  MemoryRouter as Router,
+  Routes,
+  Route,
+  Link,
+  Navigate,
+} from 'react-router-dom';
 import Login from './Login';
+import Vet from './MainAppVet';
+import Admin from './MainAppAdmin';
+
 import icon from '../../assets/icon.svg';
 import './App.css';
 
@@ -47,12 +57,40 @@ function Hello() {
 function SeregaTupit() {
   return <div>SEREGA TUPIT</div>;
 }
-
+function ProtectedRoute({
+  user,
+  requiredRole,
+  children,
+}: {
+  user: any;
+  requiredRole: string;
+  children: JSX.Element;
+}): JSX.Element {
+  if (!user || user.role !== requiredRole) return <Navigate to="/" />;
+  return children;
+}
 export default function App() {
+  const [user, setUser] = useState<any>(null);
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Login setUser={setUser} />} />
+        <Route
+          path="/vet"
+          element={
+            <ProtectedRoute user={user} requiredRole="vet">
+              <Vet />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute user={user} requiredRole="admin">
+              <Admin />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/serega-tupit" element={<SeregaTupit />} />
       </Routes>
     </Router>
