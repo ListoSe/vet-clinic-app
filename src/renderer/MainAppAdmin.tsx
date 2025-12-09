@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 import VetList from './VetList';
+import OwnersList from './OwnersList';
 
 export default function MainAppAdmin() {
   const [tab, setTab] = useState('vets');
@@ -37,20 +38,20 @@ export default function MainAppAdmin() {
       case 'vets':
         return VetList ? <VetList /> : <div>Завантаження...</div>;
       case 'owners':
-        return <div>Список владельцев животных</div>;
+        return OwnersList ? <OwnersList /> : <div>Завантаження...</div>;
       case 'animals':
-        return <div>Список животных</div>;
+        return <div>Список тварин</div>;
       case 'records':
-        return <div>Журнал записей</div>;
+        return <div>Журнал записів</div>;
       case 'finance':
-        return <div>Финансовый отчёт, платежи, статистика</div>;
+        return <div>Фінансовий звіт, платежі, статистика</div>;
       default:
         return null;
     }
   };
   return (
     <div style={styles.container}>
-      <h1>Админ-панель</h1>
+      <h1>Адмін-панель</h1>
 
       <div style={styles.tabs}>
         <button
@@ -58,7 +59,7 @@ export default function MainAppAdmin() {
           style={styles.tabButton(tab === 'vets')}
           onClick={() => setTab('vets')}
         >
-          Ветеринары
+          Ветеринари
         </button>
 
         <button
@@ -66,14 +67,14 @@ export default function MainAppAdmin() {
           style={styles.tabButton(tab === 'owners')}
           onClick={() => setTab('owners')}
         >
-          Владельцы
+          Власники
         </button>
         <button
           type="button"
           style={styles.tabButton(tab === 'animals')}
           onClick={() => setTab('animals')}
         >
-          Животные
+          Тварини
         </button>
 
         <button
@@ -89,7 +90,7 @@ export default function MainAppAdmin() {
           style={styles.tabButton(tab === 'finance')}
           onClick={() => setTab('finance')}
         >
-          Финансы
+          Фінанси
         </button>
       </div>
 

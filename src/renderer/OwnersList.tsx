@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import icon from './icon.png';
 
 const styles: { [key: string]: React.CSSProperties } = {
   inputFields: {
@@ -31,81 +30,83 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 };
 
-interface Vet {
+interface Owner {
   id: number;
   name: string;
   phone: string;
-  photoUrl?: string;
-  description?: string;
+  address?: string;
 }
 
-export default function VetList() {
-  const [vets, setVets] = useState<Vet[]>([
+export default function OwnerList() {
+  const [owners, setOwners] = useState<Owner[]>([
     {
       id: 1,
-      name: 'Іван Іваненко',
-      phone: '0501234567',
-      photoUrl: icon,
-      description: 'Спеціаліст з великим досвідом. 10 років практики.',
+      name: 'Петро Петренко',
+      phone: '0509876543',
+      address: 'вул. Шевченка, 12',
     },
     {
       id: 2,
-      name: 'Марія Петрівна',
-      phone: '0677654321',
-      photoUrl: icon,
-      description: 'Хірург, стаж 6 років.',
+      name: 'Олена Іванова',
+      phone: '0671234567',
+      address: 'просп. Свободи, 45',
     },
   ]);
+
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newVetName, setNewVetName] = useState('');
-  const [newVetPhone, setNewVetPhone] = useState('');
+  const [newOwnerName, setNewOwnerName] = useState('');
+  const [newOwnerPhone, setNewOwnerPhone] = useState('');
+  const [newOwnerAddress, setNewOwnerAddress] = useState('');
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteVetId, setDeleteVetId] = useState<number | null>(null);
+  const [deleteOwnerId, setDeleteOwnerId] = useState<number | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
 
-  const [selectedVet, setSelectedVet] = useState<Vet | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<Owner | null>(null);
 
-  const filteredVets = vets.filter((v) =>
-    v.name.toLowerCase().includes(search.toLowerCase()),
+  const filteredOwners = owners.filter((o) =>
+    o.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  filteredVets.sort((a, b) => {
+  filteredOwners.sort((a, b) => {
     if (a.name < b.name) return sortAsc ? -1 : 1;
     if (a.name > b.name) return sortAsc ? 1 : -1;
     return 0;
   });
 
-  // Добавление нового ветеринара
-  const handleAddVet = () => {
-    if (!newVetName.trim() || !newVetPhone.trim()) return;
-    setVets([
-      ...vets,
+  const handleAddOwner = () => {
+    if (!newOwnerName.trim() || !newOwnerPhone.trim()) {
+      alert("Будь ласка, заповніть ім'я та телефон власника.");
+      return;
+    }
+
+    setOwners([
+      ...owners,
       {
         id: Date.now(),
-        name: newVetName.trim(),
-        phone: newVetPhone.trim(),
-        photoUrl: '/assets/icon.png',
-        description: 'Опис відсутній',
+        name: newOwnerName.trim(),
+        phone: newOwnerPhone.trim(),
+        address: newOwnerAddress.trim() || 'Адрес не вказано',
       },
     ]);
 
-    setNewVetName('');
-    setNewVetPhone('');
+    setNewOwnerName('');
+    setNewOwnerPhone('');
+    setNewOwnerAddress('');
     setShowAddModal(false);
   };
 
-  const handleDeleteVet = () => {
+  const handleDeleteOwner = () => {
     if (adminPassword !== '1234') {
       alert('Неверный пароль администратора!');
       return;
     }
-    if (deleteVetId !== null) {
-      setVets(vets.filter((v) => v.id !== deleteVetId));
-      setDeleteVetId(null);
+    if (deleteOwnerId !== null) {
+      setOwners(owners.filter((o) => o.id !== deleteOwnerId));
+      setDeleteOwnerId(null);
       setAdminPassword('');
       setShowDeleteModal(false);
     }
@@ -113,9 +114,8 @@ export default function VetList() {
 
   return (
     <div style={{ padding: '0.5rem' }}>
-      <h2 style={{ margin: '0 0 1rem 0' }}>Список ветеринарів</h2>
+      <h2 style={{ margin: '0 0 1rem 0' }}>Список власників</h2>
 
-      {/* Поиск и кнопка добавить */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <input
           type="text"
@@ -126,7 +126,7 @@ export default function VetList() {
         />
         <button
           type="button"
-          onClick={() => setSortAsc(!sortAsc)} // меняем направление сортировки
+          onClick={() => setSortAsc(!sortAsc)}
           style={{ padding: '0.5rem 1rem' }}
         >
           {sortAsc ? 'А-Я' : 'Я-А'}
@@ -140,19 +140,12 @@ export default function VetList() {
         </button>
       </div>
 
-      {/* Список */}
       <ul style={{ paddingLeft: 10 }}>
-        {filteredVets.map((v) => (
-          <li
-            key={v.id}
-            style={{
-              listStyle: 'none',
-              marginBottom: '0.5rem',
-            }}
-          >
+        {filteredOwners.map((o) => (
+          <li key={o.id} style={{ listStyle: 'none', marginBottom: '0.5rem' }}>
             <button
               type="button"
-              onClick={() => setSelectedVet(v)}
+              onClick={() => setSelectedOwner(o)}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -164,12 +157,12 @@ export default function VetList() {
                 background: 'white',
               }}
             >
-              <span>{v.name}</span>
+              <span>{o.name}</span>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDeleteVetId(v.id);
+                  setDeleteOwnerId(o.id);
                   setShowDeleteModal(true);
                 }}
                 style={{ padding: '0.25rem 0.5rem' }}
@@ -181,23 +174,30 @@ export default function VetList() {
         ))}
       </ul>
 
-      {/* Модальное окно добавления */}
+      {/* Модальное добавления */}
       {showAddModal && (
         <div style={styles.modalWindowContainer}>
           <div style={styles.modalWindow}>
-            <h3>Додати ветеринара</h3>
+            <h3>Додати власника</h3>
             <input
               type="text"
               placeholder="ФІО"
-              value={newVetName}
-              onChange={(e) => setNewVetName(e.target.value)}
+              value={newOwnerName}
+              onChange={(e) => setNewOwnerName(e.target.value)}
               style={styles.inputFields}
             />
             <input
               type="text"
               placeholder="Телефон"
-              value={newVetPhone}
-              onChange={(e) => setNewVetPhone(e.target.value)}
+              value={newOwnerPhone}
+              onChange={(e) => setNewOwnerPhone(e.target.value)}
+              style={styles.inputFields}
+            />
+            <input
+              type="text"
+              placeholder="Адреса"
+              value={newOwnerAddress}
+              onChange={(e) => setNewOwnerAddress(e.target.value)}
               style={styles.inputFields}
             />
             <div style={styles.btnContainer}>
@@ -210,7 +210,7 @@ export default function VetList() {
               </button>
               <button
                 type="button"
-                onClick={handleAddVet}
+                onClick={handleAddOwner}
                 style={{ padding: '0.5rem 1rem' }}
               >
                 Додати
@@ -220,7 +220,7 @@ export default function VetList() {
         </div>
       )}
 
-      {/* Модальное окно удаления */}
+      {/* Модальное удаления */}
       {showDeleteModal && (
         <div style={styles.modalWindowContainer}>
           <div style={styles.modalWindow}>
@@ -243,7 +243,7 @@ export default function VetList() {
               </button>
               <button
                 type="button"
-                onClick={handleDeleteVet}
+                onClick={handleDeleteOwner}
                 style={{ padding: '0.5rem 1rem' }}
               >
                 Видалити
@@ -252,31 +252,20 @@ export default function VetList() {
           </div>
         </div>
       )}
-      {/* Модальное окно просмотра деталей */}
-      {selectedVet && (
+
+      {/* Модальное окно деталей */}
+      {selectedOwner && (
         <div style={styles.modalWindowContainer}>
           <div style={styles.modalWindow}>
-            <h3>{selectedVet.name}</h3>
-
-            <img
-              src={selectedVet.photoUrl}
-              alt={selectedVet.name}
-              style={{
-                width: '100%',
-                borderRadius: '8px',
-                marginBottom: '1rem',
-              }}
-            />
-
+            <h3>{selectedOwner.name}</h3>
             <p>
-              <b>Телефон:</b> {selectedVet.phone}
+              <b>Телефон:</b> {selectedOwner.phone}
             </p>
             <p>
-              <b>Опис:</b> {selectedVet.description}
+              <b>Адреса:</b> {selectedOwner.address}
             </p>
-
             <div style={styles.btnContainer}>
-              <button type="button" onClick={() => setSelectedVet(null)}>
+              <button type="button" onClick={() => setSelectedOwner(null)}>
                 Закрити
               </button>
             </div>
