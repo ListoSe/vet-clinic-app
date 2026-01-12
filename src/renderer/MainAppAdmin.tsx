@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 import VetList from './VetList';
 import OwnersList from './OwnersList';
+import PetList from './PetList';
 
 export default function MainAppAdmin() {
   const [tab, setTab] = useState('vets');
@@ -40,7 +41,7 @@ export default function MainAppAdmin() {
       case 'owners':
         return OwnersList ? <OwnersList /> : <div>Завантаження...</div>;
       case 'animals':
-        return <div>Список тварин</div>;
+        return PetList ? <PetList /> : <div>Завантаження...</div>;
       case 'records':
         return <div>Журнал записів</div>;
       case 'finance':

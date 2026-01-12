@@ -52,7 +52,7 @@ const styles: { [key: string]: React.CSSProperties } = {
 };
 
 const users = [
-  { role: 'admin', email: 'admin@mail.com', password: '1234' },
+  { role: 'admin', email: 'admin@mail.com', password: '12345678' },
   { role: 'vet', email: 'vet@mail.com', password: '1234' },
 ];
 
@@ -68,14 +68,14 @@ export default function Login({ setUser }: { setUser: any }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Простая валидация
+    // валидация
     if (!email || !password) {
       setError('Пожалуйста, заполните все поля');
       return;
     }
 
     const user = users.find(
-      (u) => u.email === email && u.password === password && u.role === role,
+      (u) => u.email === email && u.password === password
     );
 
     if (!user) {
@@ -86,39 +86,18 @@ export default function Login({ setUser }: { setUser: any }) {
     setError('');
     setUser(user);
 
-    if (role === 'vet') navigate('/vet');
-    if (role === 'admin') navigate('/admin');
+    // Перенаправляем в зависимости от роли найденного пользователя
+    if (user.role === 'vet') {
+      navigate('/vet');
+    } else if (user.role === 'admin') {
+      navigate('/admin');
+    }
   };
 
-  if (!role) {
-    return (
-      <div>
-        <h2>Выберите роль для входа</h2>
-        <div style={styles.buttons}>
-          <button type="button" onClick={() => setRole('admin')}>
-            Админ
-          </button>
-          <button type="button" onClick={() => setRole('vet')}>
-            Ветеринар
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div>
+    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
       <form onSubmit={handleSubmit} style={styles.form}>
-        <button
-          type="button"
-          style={styles.backButton}
-          onClick={() => setRole('')}
-        >
-          &larr;
-        </button>
-        <h2 style={styles.title}>
-          {role === 'admin' ? 'Вітаю Адмін' : 'Вітаю Ветеринар'}
-        </h2>
+        <h2 style={styles.title}>Вхід до системы</h2>
 
         {error && <p style={styles.error}>{error}</p>}
 
@@ -128,6 +107,7 @@ export default function Login({ setUser }: { setUser: any }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           style={styles.input}
+          required
         />
 
         <input
@@ -136,14 +116,15 @@ export default function Login({ setUser }: { setUser: any }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={styles.input}
+          required
         />
+
         <label htmlFor="rememberMe" style={styles.checkbox}>
           <input
             id="rememberMe"
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            style={{ ...styles.checkbox, ...styles.input }}
           />
           Запам&apos;ятати мене
         </label>
