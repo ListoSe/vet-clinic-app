@@ -1,62 +1,17 @@
-import React, { JSX, useState } from 'react';
+import React, { JSX, useState, useEffect } from 'react';
 import {
-  MemoryRouter as Router,
+  BrowserRouter as Router, // Заменили для корректной работы путей
   Routes,
   Route,
-  Link,
   Navigate,
 } from 'react-router-dom';
 import Login from './Login';
 import Vet from './MainAppVet';
 import Admin from './MainAppAdmin';
 
-import icon from '../../assets/icon.svg';
 import './App.css';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function Hello() {
-  return (
-    <div>
-      <div className="Hello">
-        <img width="200" alt="icon" src={icon} />
-      </div>
-      <h1>electron-react-boilerplate</h1>
-      <div className="Hello">
-        <a
-          href="https://electron-react-boilerplate.js.org/"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <button type="button">
-            <span role="img" aria-label="books">
-              📚
-            </span>
-            Read our docs
-          </button>
-        </a>
-        <a
-          href="https://github.com/sponsors/electron-react-boilerplate"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <button type="button">
-            <span role="img" aria-label="folded hands">
-              🙏
-            </span>
-            Donate
-          </button>
-        </a>
-        <button type="button">
-          <Link to="/serega-tupit">SEREGA TUPIT</Link>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SeregaTupit() {
-  return <div>SEREGA TUPIT</div>;
-}
+// Компонент защиты маршрутов
 function ProtectedRoute({
   user,
   requiredRole,
@@ -66,32 +21,71 @@ function ProtectedRoute({
   requiredRole: string;
   children: JSX.Element;
 }): JSX.Element {
-  if (!user || user.role !== requiredRole) return <Navigate to="/" />;
+  // Если пользователя нет — на страницу входа
+  if (!user) return <Navigate to="/" replace />;
+
+  // Если роль не совпадает — можно кидать на страницу "Доступ запрещен" или обратно
+  if (user.role !== requiredRole) return <Navigate to="/" replace />;
+
   return children;
 }
+
 export default function App() {
-  const [user, setUser] = useState<any>(null);
+  // Инициализируем состояние из localStorage, чтобы не разлогиниваться при F5
+  const [user, setUser] = useState<any>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  // Функция для входа: сохраняет и в state, и в память браузера
+  const handleLogin = (userData: any) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  // Функция для выхода (пригодится позже)
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
+
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login setUser={setUser} />} />
+        {/* Если пользователь уже вошел, при заходе на "/" редиректим его по роли */}
+        <Route
+          path="/"
+          element={
+            user ? (
+              <Navigate to={user.role === 'admin' ? "/admin" : "/vet"} replace />
+            ) : (
+              <Login setUser={handleLogin} />
+            )
+          }
+        />
+
+        {/* Маршрут Ветеринара */}
         <Route
           path="/vet"
           element={
             <ProtectedRoute user={user} requiredRole="vet">
-              <Vet />
+              <Vet user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }
         />
+
+        {/* Маршрут Админа */}
         <Route
           path="/admin"
           element={
             <ProtectedRoute user={user} requiredRole="admin">
-              <Admin />
+              <Admin user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }
         />
-        <Route path="/serega-tupit" element={<SeregaTupit />} />
+
+        {/* Редирект для несуществующих страниц */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

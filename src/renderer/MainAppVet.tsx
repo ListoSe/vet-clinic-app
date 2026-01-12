@@ -1,6 +1,16 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { useState } from 'react';
+interface VetProps {
+  user: any;
+  onLogout: () => void;
+}
 
-export default function Login() {
-  return <div>Vet Main App</div>;
+export default function Vet({ user, onLogout }: VetProps) {
+  return (
+    <div>
+      <h1>Панель Ветеринара</h1>
+      <p>Вітаю, {user?.email}</p>
+      <button onClick={onLogout}>Вийти</button>
+      {/* Твой остальной код */}
+    </div>
+  );
 }

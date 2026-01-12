@@ -1,81 +1,32 @@
 import React, { useState } from 'react';
 
-const styles: { [key: string]: React.CSSProperties } = {
-  inputFields: {
-    width: '80%',
-    padding: '0.5rem',
-    marginBottom: '1rem',
-  },
-  modalWindowContainer: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalWindow: {
-    background: 'white',
-    padding: '1rem',
-    borderRadius: '8px',
-    width: '350px',
-  },
-  btnContainer: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '0.5rem',
-  },
-};
+interface Owner { id: string; name: string; }
+interface Animal { id: string; name: string; type: string; age: number; ownerId: string; }
+interface Treatment { medicine?: string; dose?: string; duration?: string; procedure?: string; }
+interface MedicalRecordEntry { date: string; vetId?: string; diagnosis: string; treatments: Treatment[]; notes?: string; }
+interface MedicalRecord { petId: string; records: MedicalRecordEntry[]; }
 
-interface Owner {
-  id: string;
-  name: string;
+// Додано опис структури користувача в пропсах
+interface AnimalListProps {
+  currentUser?: {
+    id: string;
+    name: string;
+    password?: string; // Пароль, з яким будемо порівнювати
+  };
 }
 
-interface Animal {
-  id: string;
-  name: string;
-  type: string;
-  age: number;
-  ownerId: string;
-}
-
-interface Treatment {
-  medicine?: string;
-  dose?: string;
-  duration?: string;
-  procedure?: string;
-}
-
-interface MedicalRecordEntry {
-  date: string;
-  vetId?: string;
-  diagnosis: string;
-  treatments: Treatment[];
-  notes?: string;
-}
-
-interface MedicalRecord {
-  petId: string;
-  records: MedicalRecordEntry[];
-}
-
-export default function AnimalList() {
+export default function AnimalList({ currentUser }: AnimalListProps) {
   const [owners] = useState<Owner[]>([
     { id: '1', name: 'Петро Петренко' },
     { id: '2', name: 'Олена Іванова' },
   ]);
 
   const [animals, setAnimals] = useState<Animal[]>([
-    { id: '1', name: 'Софискус', type: 'cat', age: 3, ownerId: '1' },
-    { id: '2', name: 'Бобик', type: 'dog', age: 5, ownerId: '2' },
+    { id: '1', name: 'Софискус', type: 'Кіт', age: 3, ownerId: '1' },
+    { id: '2', name: 'Бобик', type: 'Пес', age: 5, ownerId: '2' },
   ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([
+  const [medicalRecords] = useState<MedicalRecord[]>([
     {
       petId: '1',
       records: [
@@ -84,7 +35,7 @@ export default function AnimalList() {
           diagnosis: 'Гострий риніт',
           treatments: [
             { medicine: 'Антибіотик', dose: '2 мл', duration: '5 днів' },
-            { procedure: 'Промывание носа' },
+            { procedure: 'Промивання носа' },
           ],
           notes: 'Повторний огляд через тиждень',
         },
@@ -94,292 +45,205 @@ export default function AnimalList() {
 
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
+  const [viewingMedicalHistory, setViewingMedicalHistory] = useState<Animal | null>(null);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newAnimalName, setNewAnimalName] = useState('');
-  const [newAnimalType, setNewAnimalType] = useState('');
-  const [newAnimalAge, setNewAnimalAge] = useState('');
-  const [newAnimalOwnerId, setNewAnimalOwnerId] = useState<string>('');
-
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteAnimalId, setDeleteAnimalId] = useState<string | null>(null);
+  // Стани для видалення та помилок
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
-
-  const filteredAnimals = animals.filter((a) =>
-    a.name.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  filteredAnimals.sort((a, b) => {
-    if (a.name < b.name) return sortAsc ? -1 : 1;
-    if (a.name > b.name) return sortAsc ? 1 : -1;
-    return 0;
-  });
-
-  const handleAddAnimal = () => {
-    if (
-      !newAnimalName.trim() ||
-      !newAnimalType.trim() ||
-      !newAnimalAge.trim() ||
-      !newAnimalOwnerId
-    ) {
-      alert('Будь ласка, заповніть всі поля та оберіть власника.');
-      return;
-    }
-
-    setAnimals([
-      ...animals,
-      {
-        id: Date.now().toString(),
-        name: newAnimalName.trim(),
-        type: newAnimalType.trim(),
-        age: Number(newAnimalAge),
-        ownerId: newAnimalOwnerId,
-      },
-    ]);
-
-    setNewAnimalName('');
-    setNewAnimalType('');
-    setNewAnimalAge('');
-    setNewAnimalOwnerId('');
-    setShowAddModal(false);
+  const theme = {
+    primary: '#3b82f6',
+    danger: '#ef4444',
+    border: '#e2e8f0',
+    text: '#1e293b',
+    textLight: '#64748b',
+    bgBadge: '#eff6ff',
   };
 
-  const handleDeleteAnimal = () => {
-    if (adminPassword !== '1234') {
-      alert('Неверный пароль администратора!');
-      return;
-    }
-    if (deleteAnimalId !== null) {
-      setAnimals(animals.filter((a) => a.id !== deleteAnimalId));
-      setDeleteAnimalId(null);
-      setAdminPassword('');
-      setShowDeleteModal(false);
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { width: '100%', color: theme.text },
+    controls: { display: 'flex', gap: '12px', marginBottom: '20px' },
+    input: {
+      padding: '10px 14px', borderRadius: '8px', border: `1px solid ${theme.border}`,
+      fontSize: '14px', outline: 'none', boxSizing: 'border-box', width: '100%', display: 'block'
+    },
+    button: { padding: '10px 18px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600' },
+    table: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' },
+    th: { textAlign: 'left', padding: '12px', borderBottom: `2px solid ${theme.border}`, color: theme.textLight, fontSize: '13px' },
+    td: { padding: '14px 12px', borderBottom: `1px solid ${theme.border}`, fontSize: '14px' },
+    badge: { padding: '4px 8px', borderRadius: '6px', backgroundColor: theme.bgBadge, color: theme.primary, fontSize: '12px', fontWeight: 'bold' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+    modal: { background: 'white', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '450px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', boxSizing: 'border-box' }
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteConfirmId(null);
+    setAdminPassword('');
+    setErrorMessage('');
+  };
+
+  const confirmDelete = () => {
+    // ПОРІВНЯННЯ: Беремо пароль з currentUser або '1234' як запасний
+    const passwordToMatch = currentUser?.password || '1234';
+
+    if (adminPassword === passwordToMatch) {
+      setAnimals(animals.filter(a => a.id !== deleteConfirmId));
+      closeDeleteModal();
+    } else {
+      setErrorMessage('Невірний пароль користувача!');
+      setAdminPassword(''); // Очищуємо поле для нової спроби
     }
   };
 
-  const getOwnerName = (ownerId: string) => {
-    const owner = owners.find((o) => o.id === ownerId);
-    return owner ? owner.name : 'Невідомий власник';
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const animalData = {
+      name: formData.get('name') as string,
+      type: formData.get('type') as string,
+      age: Number(formData.get('age')),
+      ownerId: formData.get('ownerId') as string,
+    };
+
+    if (editingAnimal) {
+      setAnimals(animals.map(a => a.id === editingAnimal.id ? { ...editingAnimal, ...animalData } : a));
+    } else {
+      setAnimals([...animals, { ...animalData, id: Date.now().toString() }]);
+    }
+    setIsFormOpen(false);
   };
 
-  const getMedicalRecord = (petId: string) => {
-    return medicalRecords.find((mr) => mr.petId === petId)?.records || [];
-  };
+  const filteredAnimals = animals
+    .filter((a) => a.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => (a.name < b.name ? (sortAsc ? -1 : 1) : (sortAsc ? 1 : -1)));
 
   return (
-    <div style={{ padding: '0.5rem' }}>
-      <h2 style={{ margin: '0 0 1rem 0' }}>Список тварин</h2>
-
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+    <div style={styles.container}>
+      <div style={styles.controls}>
         <input
-          type="text"
-          placeholder="Пошук"
+          placeholder="Пошук тварини за кличкою..."
+          style={{ ...styles.input, flex: 1 }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, padding: '0.5rem' }}
         />
-        <button
-          type="button"
-          onClick={() => setSortAsc(!sortAsc)}
-          style={{ padding: '0.5rem 1rem' }}
-        >
+        <button onClick={() => setSortAsc(!sortAsc)} style={{ ...styles.button, backgroundColor: '#f1f5f9' }}>
           {sortAsc ? 'А-Я' : 'Я-А'}
         </button>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          style={{ padding: '0.5rem 1rem' }}
-        >
-          + Додати
+        <button onClick={() => { setEditingAnimal(null); setIsFormOpen(true); }} style={{ ...styles.button, backgroundColor: theme.primary, color: 'white' }}>
+          + Додати тварину
         </button>
       </div>
 
-      <ul style={{ paddingLeft: 10 }}>
-        {filteredAnimals.map((a) => (
-          <li key={a.id} style={{ listStyle: 'none', marginBottom: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => setSelectedAnimal(a)}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                width: '100%',
-                padding: '0.5rem',
-                cursor: 'pointer',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                background: 'white',
-              }}
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            <th style={{ ...styles.th, width: '30%' }}>Кличка</th>
+            <th style={{ ...styles.th, width: '20%' }}>Вид</th>
+            <th style={{ ...styles.th, width: '30%' }}>Власник</th>
+            <th style={{ ...styles.th, width: '20%', textAlign: 'right' }}>Дії</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredAnimals.map((a) => (
+            <tr
+              key={a.id}
+              onClick={() => { setEditingAnimal(a); setIsFormOpen(true); }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              style={{ cursor: 'pointer' }}
             >
-              <span>
-                {a.name} ({a.type}, {a.age} р.)
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteAnimalId(a.id);
-                  setShowDeleteModal(true);
-                }}
-                style={{ padding: '0.25rem 0.5rem' }}
-              >
-                Видалити
-              </button>
-            </button>
-          </li>
-        ))}
-      </ul>
+              <td style={{ ...styles.td, fontWeight: 'bold' }}>🐾 {a.name}</td>
+              <td style={styles.td}><span style={styles.badge}>{a.type}</span></td>
+              <td style={styles.td}>{owners.find(o => o.id === a.ownerId)?.name || '—'}</td>
+              <td style={{ ...styles.td, textAlign: 'right' }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(a.id); }}
+                  style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', fontSize: '12px' }}
+                >
+                  Видалити
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      {/* Модальное добавления */}
-      {showAddModal && (
-        <div style={styles.modalWindowContainer}>
-          <div style={styles.modalWindow}>
-            <h3>Додати тварину</h3>
-            <input
-              type="text"
-              placeholder="Ім'я"
-              value={newAnimalName}
-              onChange={(e) => setNewAnimalName(e.target.value)}
-              style={styles.inputFields}
-            />
-            <input
-              type="text"
-              placeholder="Тип (cat/dog/інше)"
-              value={newAnimalType}
-              onChange={(e) => setNewAnimalType(e.target.value)}
-              style={styles.inputFields}
-            />
-            <input
-              type="number"
-              placeholder="Вік"
-              value={newAnimalAge}
-              onChange={(e) => setNewAnimalAge(e.target.value)}
-              style={styles.inputFields}
-            />
-            <select
-              value={newAnimalOwnerId}
-              onChange={(e) => setNewAnimalOwnerId(e.target.value)}
-              style={styles.inputFields}
-            >
-              <option value="">Оберіть власника</option>
-              {owners.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-            <div style={styles.btnContainer}>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Відміна
-              </button>
-              <button
-                type="button"
-                onClick={handleAddAnimal}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Додати
-              </button>
-            </div>
+      {/* МОДАЛКА ФОРМИ */}
+      {isFormOpen && (
+        <div style={styles.modalOverlay} onClick={() => setIsFormOpen(false)}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
+              {editingAnimal ? 'Редагувати профіль' : 'Реєстрація тварини'}
+            </h3>
+            <form onSubmit={handleSave}>
+              <label style={{ fontSize: '12px', color: theme.textLight, fontWeight: 'bold' }}>Кличка</label>
+              <input name="name" defaultValue={editingAnimal?.name} style={{ ...styles.input, marginBottom: '15px', marginTop: '5px' }} required />
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: theme.textLight, fontWeight: 'bold' }}>Вид</label>
+                  <input name="type" defaultValue={editingAnimal?.type} style={{ ...styles.input, marginBottom: '15px', marginTop: '5px' }} required />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: theme.textLight, fontWeight: 'bold' }}>Вік</label>
+                  <input name="age" type="number" defaultValue={editingAnimal?.age} style={{ ...styles.input, marginBottom: '15px', marginTop: '5px' }} required />
+                </div>
+              </div>
+
+              <label style={{ fontSize: '12px', color: theme.textLight, fontWeight: 'bold' }}>Власник</label>
+              <select name="ownerId" defaultValue={editingAnimal?.ownerId} style={{ ...styles.input, marginBottom: '25px', marginTop: '5px' }} required>
+                <option value="">Оберіть власника...</option>
+                {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="submit" style={{ ...styles.button, backgroundColor: theme.primary, color: 'white', flex: 1 }}>Зберегти</button>
+                <button type="button" onClick={() => setIsFormOpen(false)} style={{ ...styles.button, backgroundColor: '#f1f5f9', flex: 1 }}>Скасувати</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Модальное удаления */}
-      {showDeleteModal && (
-        <div style={styles.modalWindowContainer}>
-          <div style={styles.modalWindow}>
-            <h3>Підтвердити видалення</h3>
-            <p>Введіть пароль адміністратора для видалення:</p>
+      {/* МОДАЛКА ВИДАЛЕННЯ */}
+      {deleteConfirmId && (
+        <div style={styles.modalOverlay} onClick={closeDeleteModal}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: theme.danger, marginTop: 0 }}>Підтвердити видалення</h3>
+            <p style={{ fontSize: '14px', color: theme.textLight, marginBottom: '15px' }}>
+              Підтвердіть дію паролем користувача <strong>{currentUser?.name || 'Адміністратор'}</strong>:
+            </p>
+
             <input
               type="password"
-              placeholder="Пароль"
+              style={{
+                ...styles.input,
+                borderColor: errorMessage ? theme.danger : theme.border,
+                backgroundColor: errorMessage ? '#fff5f5' : 'white'
+              }}
               value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              style={styles.inputFields}
+              onChange={e => {
+                setAdminPassword(e.target.value);
+                setErrorMessage('');
+              }}
+              placeholder="Введіть ваш пароль"
+              autoFocus
             />
-            <div style={styles.btnContainer}>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Відміна
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteAnimal}
-                style={{ padding: '0.5rem 1rem' }}
-              >
+
+            {errorMessage && (
+              <div style={{ color: theme.danger, fontSize: '12px', marginTop: '8px', fontWeight: 'bold', textAlign: 'center' }}>
+                {errorMessage}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={confirmDelete} style={{ ...styles.button, backgroundColor: theme.danger, color: 'white', flex: 1 }}>
                 Видалити
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно просмотра */}
-      {selectedAnimal && (
-        <div style={styles.modalWindowContainer}>
-          <div style={styles.modalWindow}>
-            <h3>{selectedAnimal.name}</h3>
-            <p>
-              <b>Тип:</b> {selectedAnimal.type}
-            </p>
-            <p>
-              <b>Вік:</b> {selectedAnimal.age} р.
-            </p>
-            <p>
-              <b>Власник:</b> {getOwnerName(selectedAnimal.ownerId)}
-            </p>
-            <h4>Медична карта:</h4>
-            {getMedicalRecord(selectedAnimal.id).length === 0 && (
-              <p>Записів немає</p>
-            )}
-            {getMedicalRecord(selectedAnimal.id).map((r) => (
-              <div
-                key={r.date + (r.vetId || '')}
-                style={{ borderTop: '1px solid #ddd', padding: '5px 0' }}
-              >
-                <p>
-                  <b>Дата:</b> {r.date}
-                </p>
-                <p>
-                  <b>Діагноз:</b> {r.diagnosis}
-                </p>
-                {r.treatments.map((t) => {
-                  let treatmentKey = '';
-                  if (t.medicine) {
-                    treatmentKey = `med-${t.medicine}`;
-                  } else if (t.procedure) {
-                    treatmentKey = `proc-${t.procedure}`;
-                  } else {
-                    treatmentKey = Math.random().toString();
-                  }
-                  return (
-                    <div key={treatmentKey}>
-                      {t.medicine && (
-                        <p>
-                          Ліки: {t.medicine}, Доза: {t.dose}, Тривалість:
-                          {t.duration}
-                        </p>
-                      )}
-                      {t.procedure && <p>Процедура: {t.procedure}</p>}
-                    </div>
-                  );
-                })}
-                {r.notes && <p>Примітки: {r.notes}</p>}
-              </div>
-            ))}
-            <div style={styles.btnContainer}>
-              <button type="button" onClick={() => setSelectedAnimal(null)}>
-                Закрити
-              </button>
+              <button onClick={closeDeleteModal} style={{ ...styles.button, backgroundColor: '#f1f5f9', flex: 1 }}>Назад</button>
             </div>
           </div>
         </div>

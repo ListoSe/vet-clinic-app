@@ -1,36 +1,6 @@
 import React, { useState } from 'react';
 import icon from './icon.png';
 
-const styles: { [key: string]: React.CSSProperties } = {
-  inputFields: {
-    width: '80%',
-    padding: '0.5rem',
-    marginBottom: '1rem',
-  },
-  modalWindowContainer: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalWindow: {
-    background: 'white',
-    padding: '1rem',
-    borderRadius: '8px',
-    width: '300px',
-  },
-  btnContainer: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '0.5rem',
-  },
-};
-
 interface Vet {
   id: number;
   name: string;
@@ -39,246 +9,215 @@ interface Vet {
   description?: string;
 }
 
-export default function VetList() {
+// Додано інтерфейс пропсів для отримання поточного юзера
+interface VetListProps {
+  currentUser?: {
+    name: string;
+    password?: string;
+  };
+}
+
+export default function VetList({ currentUser }: VetListProps) {
   const [vets, setVets] = useState<Vet[]>([
-    {
-      id: 1,
-      name: 'Іван Іваненко',
-      phone: '0501234567',
-      photoUrl: icon,
-      description: 'Спеціаліст з великим досвідом. 10 років практики.',
-    },
-    {
-      id: 2,
-      name: 'Марія Петрівна',
-      phone: '0677654321',
-      photoUrl: icon,
-      description: 'Хірург, стаж 6 років.',
-    },
+    { id: 1, name: 'Іван Іваненко', phone: '0501234567', photoUrl: icon, description: 'Спеціаліст з великим досвідом. 10 років практики.' },
+    { id: 2, name: 'Марія Петрівна', phone: '0677654321', photoUrl: icon, description: 'Хірург, стаж 6 років.' },
   ]);
+
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newVetName, setNewVetName] = useState('');
-  const [newVetPhone, setNewVetPhone] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingVet, setEditingVet] = useState<Vet | null>(null);
 
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteVetId, setDeleteVetId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState(''); // Стан для помилки пароля
 
-  const [selectedVet, setSelectedVet] = useState<Vet | null>(null);
-
-  const filteredVets = vets.filter((v) =>
-    v.name.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  filteredVets.sort((a, b) => {
-    if (a.name < b.name) return sortAsc ? -1 : 1;
-    if (a.name > b.name) return sortAsc ? 1 : -1;
-    return 0;
-  });
-
-  // Добавление нового ветеринара
-  const handleAddVet = () => {
-    if (!newVetName.trim() || !newVetPhone.trim()) return;
-    setVets([
-      ...vets,
-      {
-        id: Date.now(),
-        name: newVetName.trim(),
-        phone: newVetPhone.trim(),
-        photoUrl: '/assets/icon.png',
-        description: 'Опис відсутній',
-      },
-    ]);
-
-    setNewVetName('');
-    setNewVetPhone('');
-    setShowAddModal(false);
+  const theme = {
+    primary: '#3b82f6',
+    danger: '#ef4444',
+    border: '#e2e8f0',
+    text: '#1e293b',
+    textLight: '#64748b'
   };
 
-  const handleDeleteVet = () => {
-    if (adminPassword !== '1234') {
-      alert('Неверный пароль администратора!');
-      return;
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { width: '100%', color: theme.text },
+    controls: { display: 'flex', gap: '12px', marginBottom: '20px' },
+    input: {
+      padding: '10px 14px', borderRadius: '8px', border: `1px solid ${theme.border}`,
+      fontSize: '14px', outline: 'none', boxSizing: 'border-box', width: '100%', display: 'block'
+    },
+    button: { padding: '10px 18px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600' },
+    table: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' },
+    th: { textAlign: 'left', padding: '12px', borderBottom: `2px solid ${theme.border}`, color: theme.textLight, fontSize: '13px' },
+    td: { padding: '14px 12px', borderBottom: `1px solid ${theme.border}`, fontSize: '14px' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+    modal: { background: 'white', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '450px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', boxSizing: 'border-box' }
+  };
+
+  // Закриття модалки видалення з очищенням станів
+  const closeDeleteModal = () => {
+    setDeleteConfirmId(null);
+    setAdminPassword('');
+    setErrorMessage('');
+  };
+
+  const handleOpenEdit = (vet: Vet) => {
+    setEditingVet(vet);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenAdd = () => {
+    setEditingVet(null);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const vetData = {
+      name: formData.get('name') as string,
+      phone: formData.get('phone') as string,
+      description: formData.get('description') as string,
+    };
+
+    if (editingVet) {
+      setVets(vets.map(v => v.id === editingVet.id ? { ...editingVet, ...vetData } : v));
+    } else {
+      setVets([...vets, { ...vetData, id: Date.now(), photoUrl: icon }]);
     }
-    if (deleteVetId !== null) {
-      setVets(vets.filter((v) => v.id !== deleteVetId));
-      setDeleteVetId(null);
-      setAdminPassword('');
-      setShowDeleteModal(false);
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = () => {
+    // ПОРІВНЯННЯ: Беремо пароль залогіненого юзера або '1234'
+    const correctPassword = currentUser?.password || '1234';
+
+    if (adminPassword === correctPassword) {
+      setVets(vets.filter(v => v.id !== deleteConfirmId));
+      closeDeleteModal();
+    } else {
+      setErrorMessage('Невірний пароль користувача!');
+      setAdminPassword(''); // Очищуємо поле для нової спроби
     }
   };
+
+  const filteredVets = vets
+    .filter((v) => v.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => (a.name < b.name ? (sortAsc ? -1 : 1) : (sortAsc ? 1 : -1)));
 
   return (
-    <div style={{ padding: '0.5rem' }}>
-      <h2 style={{ margin: '0 0 1rem 0' }}>Список ветеринарів</h2>
-
-      {/* Поиск и кнопка добавить */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+    <div style={styles.container}>
+      <div style={styles.controls}>
         <input
-          type="text"
-          placeholder="Пошук"
+          placeholder="Пошук лікаря..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, padding: '0.5rem' }}
+          style={{ ...styles.input, flex: 1 }}
         />
-        <button
-          type="button"
-          onClick={() => setSortAsc(!sortAsc)} // меняем направление сортировки
-          style={{ padding: '0.5rem 1rem' }}
-        >
+        <button onClick={() => setSortAsc(!sortAsc)} style={{ ...styles.button, backgroundColor: '#f1f5f9' }}>
           {sortAsc ? 'А-Я' : 'Я-А'}
         </button>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          style={{ padding: '0.5rem 1rem' }}
-        >
-          + Додати
+        <button onClick={handleOpenAdd} style={{ ...styles.button, backgroundColor: theme.primary, color: 'white' }}>
+          + Додати лікаря
         </button>
       </div>
 
-      {/* Список */}
-      <ul style={{ paddingLeft: 10 }}>
-        {filteredVets.map((v) => (
-          <li
-            key={v.id}
-            style={{
-              listStyle: 'none',
-              marginBottom: '0.5rem',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setSelectedVet(v)}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                width: '100%',
-                padding: '0.5rem',
-                cursor: 'pointer',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                background: 'white',
-              }}
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            <th style={{ ...styles.th, width: '45px' }}></th>
+            <th style={styles.th}>ПІБ Ветеринара</th>
+            <th style={styles.th}>Телефон</th>
+            <th style={{ ...styles.th, textAlign: 'right' }}>Дії</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredVets.map((v) => (
+            <tr
+              key={v.id}
+              onClick={() => handleOpenEdit(v)}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              style={{ cursor: 'pointer' }}
             >
-              <span>{v.name}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteVetId(v.id);
-                  setShowDeleteModal(true);
-                }}
-                style={{ padding: '0.25rem 0.5rem' }}
-              >
-                Видалити
-              </button>
-            </button>
-          </li>
-        ))}
-      </ul>
+              <td style={styles.td}>
+                <img src={v.photoUrl} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+              </td>
+              <td style={{ ...styles.td, fontWeight: '600' }}>{v.name}</td>
+              <td style={{ ...styles.td, color: theme.textLight }}>{v.phone}</td>
+              <td style={{ ...styles.td, textAlign: 'right' }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(v.id); }}
+                  style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', fontSize: '12px' }}
+                >
+                  Видалити
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      {/* Модальное окно добавления */}
-      {showAddModal && (
-        <div style={styles.modalWindowContainer}>
-          <div style={styles.modalWindow}>
-            <h3>Додати ветеринара</h3>
-            <input
-              type="text"
-              placeholder="ФІО"
-              value={newVetName}
-              onChange={(e) => setNewVetName(e.target.value)}
-              style={styles.inputFields}
-            />
-            <input
-              type="text"
-              placeholder="Телефон"
-              value={newVetPhone}
-              onChange={(e) => setNewVetPhone(e.target.value)}
-              style={styles.inputFields}
-            />
-            <div style={styles.btnContainer}>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Відміна
-              </button>
-              <button
-                type="button"
-                onClick={handleAddVet}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Додати
-              </button>
-            </div>
+      {isModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '20px', marginTop: 0 }}>
+              {editingVet ? 'Редагувати профіль' : 'Новий фахівець'}
+            </h3>
+            <form onSubmit={handleSave}>
+              <label style={{ fontSize: '12px', color: theme.textLight, fontWeight: 'bold' }}>ПІБ Лікаря</label>
+              <input name="name" defaultValue={editingVet?.name} style={{ ...styles.input, marginBottom: '15px', marginTop: '5px' }} required />
+
+              <label style={{ fontSize: '12px', color: theme.textLight, fontWeight: 'bold' }}>Контактний телефон</label>
+              <input name="phone" defaultValue={editingVet?.phone} style={{ ...styles.input, marginBottom: '15px', marginTop: '5px' }} required />
+
+              <label style={{ fontSize: '12px', color: theme.textLight, fontWeight: 'bold' }}>Спеціалізація та опис</label>
+              <textarea name="description" defaultValue={editingVet?.description} style={{ ...styles.input, height: '100px', resize: 'none', marginBottom: '20px', marginTop: '5px' }} />
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="submit" style={{ ...styles.button, backgroundColor: theme.primary, color: 'white', flex: 1 }}>Зберегти</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={{ ...styles.button, backgroundColor: '#f1f5f9', flex: 1 }}>Скасувати</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Модальное окно удаления */}
-      {showDeleteModal && (
-        <div style={styles.modalWindowContainer}>
-          <div style={styles.modalWindow}>
-            <h3>Підтвердити видалення</h3>
-            <p>Введіть пароль адміністратора для видалення:</p>
+      {/* МОДАЛКА ВИДАЛЕННЯ З ПЕРЕВІРКОЮ ПАРОЛЯ */}
+      {deleteConfirmId && (
+        <div style={styles.modalOverlay} onClick={closeDeleteModal}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: theme.danger, marginTop: 0 }}>Підтвердження видалення</h3>
+            <p style={{ fontSize: '14px', color: theme.textLight, marginBottom: '16px' }}>
+              Введіть пароль користувача <strong>{currentUser?.name || 'Адміністратор'}</strong>:
+            </p>
             <input
               type="password"
-              placeholder="Пароль"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              style={styles.inputFields}
-            />
-            <div style={styles.btnContainer}>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Відміна
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteVet}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Видалити
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Модальное окно просмотра деталей */}
-      {selectedVet && (
-        <div style={styles.modalWindowContainer}>
-          <div style={styles.modalWindow}>
-            <h3>{selectedVet.name}</h3>
-
-            <img
-              src={selectedVet.photoUrl}
-              alt={selectedVet.name}
               style={{
-                width: '100%',
-                borderRadius: '8px',
-                marginBottom: '1rem',
+                ...styles.input,
+                borderColor: errorMessage ? theme.danger : theme.border,
+                backgroundColor: errorMessage ? '#fff5f5' : 'white'
               }}
+              value={adminPassword}
+              onChange={e => {
+                setAdminPassword(e.target.value);
+                setErrorMessage('');
+              }}
+              autoFocus
+              placeholder="Введіть ваш пароль"
             />
 
-            <p>
-              <b>Телефон:</b> {selectedVet.phone}
-            </p>
-            <p>
-              <b>Опис:</b> {selectedVet.description}
-            </p>
+            {errorMessage && (
+              <div style={{ color: theme.danger, fontSize: '12px', marginTop: '8px', fontWeight: 'bold', textAlign: 'center' }}>
+                {errorMessage}
+              </div>
+            )}
 
-            <div style={styles.btnContainer}>
-              <button type="button" onClick={() => setSelectedVet(null)}>
-                Закрити
-              </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={handleDelete} style={{ ...styles.button, backgroundColor: theme.danger, color: 'white', flex: 1 }}>Видалити</button>
+              <button onClick={closeDeleteModal} style={{ ...styles.button, backgroundColor: '#f1f5f9', flex: 1 }}>Назад</button>
             </div>
           </div>
         </div>

@@ -1,65 +1,94 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Кольорова палітра як у твоїх списках
+const theme = {
+  primary: '#3b82f6',
+  danger: '#ef4444',
+  border: '#e2e8f0',
+  text: '#1e293b',
+  textLight: '#64748b',
+  bg: '#f8fafc'
+};
+
 const styles: { [key: string]: React.CSSProperties } = {
+  wrapper: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.bg,
+  },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    padding: '2rem',
-    borderRadius: '8px',
+    padding: '2.5rem',
+    borderRadius: '12px', // Як у модалках
     background: '#fff',
-    boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-    width: '300px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+    width: '350px',
   },
   title: {
     textAlign: 'center',
-    marginBottom: '1rem',
-    color: 'black',
+    marginBottom: '1.5rem',
+    color: theme.text,
+    fontSize: '24px',
+    fontWeight: '700',
+  },
+  label: {
+    fontSize: '12px',
+    color: theme.textLight,
+    fontWeight: 'bold',
+    marginBottom: '5px',
+    textTransform: 'uppercase',
   },
   input: {
-    padding: '0.5rem',
+    padding: '12px 14px',
     marginBottom: '1rem',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
+    borderRadius: '8px', // Як у списках
+    border: `1px solid ${theme.border}`,
+    fontSize: '14px',
+    outline: 'none',
   },
-  checkbox: {
-    color: 'black',
-    textAlign: 'right',
-  },
-  buttons: {
+  checkboxContainer: {
     display: 'flex',
-    gap: '20px',
-    marginTop: '20px',
-    justifyContent: 'center',
-  },
-  button: {
-    padding: '0.5rem',
-    background: '#007bff',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
+    alignItems: 'center',
+    gap: '8px',
+    color: theme.textLight,
+    fontSize: '14px',
+    marginBottom: '1.5rem',
     cursor: 'pointer',
   },
+  button: {
+    padding: '12px',
+    background: theme.primary,
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    fontSize: '16px',
+  },
   error: {
-    color: 'red',
+    color: theme.danger,
+    backgroundColor: '#fff5f5',
+    padding: '10px',
+    borderRadius: '6px',
+    fontSize: '13px',
     marginBottom: '1rem',
     textAlign: 'center',
-  },
-  backButton: {
-    width: '2rem',
-    padding: '0',
+    border: `1px solid #feb2b2`,
   },
 };
 
+// Додав поле 'name' для кожного користувача
 const users = [
-  { role: 'admin', email: 'admin@mail.com', password: '12345678' },
-  { role: 'vet', email: 'vet@mail.com', password: '1234' },
+  { id: '1', role: 'admin', name: 'Адміністратор', email: 'admin@mail.com', password: '12345678' },
+  { id: '2', role: 'vet', name: 'Черговий лікар', email: 'vet@mail.com', password: '1234' },
 ];
 
 export default function Login({ setUser }: { setUser: any }) {
   const navigate = useNavigate();
 
-  const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -68,9 +97,8 @@ export default function Login({ setUser }: { setUser: any }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // валидация
     if (!email || !password) {
-      setError('Пожалуйста, заполните все поля');
+      setError('Будь ласка, заповніть усі поля');
       return;
     }
 
@@ -79,14 +107,14 @@ export default function Login({ setUser }: { setUser: any }) {
     );
 
     if (!user) {
-      setError('Неверный логин или пароль!');
+      setError('Невірний логін або пароль!');
       return;
     }
 
     setError('');
-    setUser(user);
+    setUser(user); // Передаємо весь об'єкт (включаючи name та password) в App.tsx
 
-    // Перенаправляем в зависимости от роли найденного пользователя
+    // Редірект залежно від ролі
     if (user.role === 'vet') {
       navigate('/vet');
     } else if (user.role === 'admin') {
@@ -95,38 +123,39 @@ export default function Login({ setUser }: { setUser: any }) {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
+    <div style={styles.wrapper}>
       <form onSubmit={handleSubmit} style={styles.form}>
-        <h2 style={styles.title}>Вхід до системы</h2>
+        <h2 style={styles.title}>Вхід до системи</h2>
 
-        {error && <p style={styles.error}>{error}</p>}
+        {error && <div style={styles.error}>{error}</div>}
 
+        <label style={styles.label}>Email</label>
         <input
           type="email"
-          placeholder="Email"
+          placeholder="email@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           style={styles.input}
           required
         />
 
+        <label style={styles.label}>Пароль</label>
         <input
           type="password"
-          placeholder="Password"
+          placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={styles.input}
           required
         />
 
-        <label htmlFor="rememberMe" style={styles.checkbox}>
+        <label style={styles.checkboxContainer}>
           <input
-            id="rememberMe"
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
           />
-          Запам&apos;ятати мене
+          Запам'ятати мене
         </label>
 
         <button type="submit" style={styles.button}>
