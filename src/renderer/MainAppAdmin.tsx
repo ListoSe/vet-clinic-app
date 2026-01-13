@@ -3,6 +3,7 @@ import VetList from './VetList';
 import OwnersList from './OwnersList';
 import PetList from './PetList';
 import RecordsList from './RecordsList';
+import FinanceList from './FinanceList';
 
 interface AdminProps {
   user: any;
@@ -18,7 +19,7 @@ export default function MainAppAdmin({ user, onLogout }: AdminProps) {
       case 'owners': return <OwnersList currentUser={user}/>;
       case 'animals': return <PetList currentUser={user}/>;
       case 'records': return <RecordsList currentUser={user} />;
-      case 'finance': return <div style={{padding: '20px'}}>📊 Модуль статистики та фінансів</div>;
+      case 'finance': return <FinanceList currentUser={user} />;
       default: return null;
     }
   };
