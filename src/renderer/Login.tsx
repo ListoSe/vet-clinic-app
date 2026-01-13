@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-
 // Додав поле 'name' для кожного користувача
 const users = [
-  { id: '1', role: 'admin', name: 'Адміністратор', email: 'admin@mail.com', password: '12345678' },
-  { id: '2', role: 'vet', name: 'Черговий лікар', email: 'vet@mail.com', password: '1234' },
+  {
+    id: '1',
+    role: 'admin',
+    name: 'Адміністратор',
+    email: 'admin@mail.com',
+    password: '12345678',
+  },
+  {
+    id: '2',
+    role: 'vet',
+    name: 'Черговий лікар',
+    email: 'vet@mail.com',
+    password: '1234',
+  },
 ];
 
 export default function Login({ setUser }: { setUser: any }) {
@@ -25,7 +36,7 @@ export default function Login({ setUser }: { setUser: any }) {
     }
 
     const user = users.find(
-      (u) => u.email === email && u.password === password
+      (u) => u.email === email && u.password === password,
     );
 
     if (!user) {
@@ -47,7 +58,15 @@ export default function Login({ setUser }: { setUser: any }) {
   return (
     <div className="login-page">
       <form onSubmit={handleSubmit} className="login-form">
-        <h2 style={{ textAlign: 'center', color: '#1e293b', marginBottom: '1.5rem' }}>VetControl</h2>
+        <h2
+          style={{
+            textAlign: 'center',
+            color: '#1e293b',
+            marginBottom: '1.5rem',
+          }}
+        >
+          VetControl
+        </h2>
 
         {error && <div className="error-banner">{error}</div>}
 
@@ -77,7 +96,7 @@ export default function Login({ setUser }: { setUser: any }) {
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
           />
-          Запам'ятати мене
+          Запам&apos;ятати мене
         </label>
 
         <button type="submit" className="btn btn-primary">

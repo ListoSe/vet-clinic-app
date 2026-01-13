@@ -1,4 +1,4 @@
-import React, { JSX, useState, useEffect } from 'react';
+import React, { JSX, useState } from 'react';
 import {
   BrowserRouter as Router, // Заменили для корректной работы путей
   Routes,
@@ -57,7 +57,10 @@ export default function App() {
           path="/"
           element={
             user ? (
-              <Navigate to={user.role === 'admin' ? "/admin" : "/vet"} replace />
+              <Navigate
+                to={user.role === 'admin' ? '/admin' : '/vet'}
+                replace
+              />
             ) : (
               <Login setUser={handleLogin} />
             )

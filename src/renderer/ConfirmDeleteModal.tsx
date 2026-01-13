@@ -15,7 +15,7 @@ export default function ConfirmDeleteModal({
   onConfirm,
   userName,
   errorMessage,
-  setErrorMessage
+  setErrorMessage,
 }: ConfirmDeleteModalProps) {
   const [password, setPassword] = useState('');
 
@@ -35,9 +35,18 @@ export default function ConfirmDeleteModal({
   return (
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ color: 'var(--danger)', marginTop: 0 }}>Підтвердити видалення</h3>
-        <p style={{ fontSize: '14px', color: 'var(--text-light)', marginBottom: '16px' }}>
-          Підтвердіть паролем користувача <strong>{userName || 'Адмін'}</strong>:
+        <h3 style={{ color: 'var(--danger)', marginTop: 0 }}>
+          Підтвердити видалення
+        </h3>
+        <p
+          style={{
+            fontSize: '14px',
+            color: 'var(--text-light)',
+            marginBottom: '16px',
+          }}
+        >
+          Підтвердіть паролем користувача <strong>{userName || 'Адмін'}</strong>
+          :
         </p>
         <input
           type="password"
@@ -53,10 +62,18 @@ export default function ConfirmDeleteModal({
         />
         {errorMessage && <div className="error-banner">{errorMessage}</div>}
         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-          <button onClick={handleConfirm} className="btn btn-danger" style={{ flex: 1 }}>
+          <button
+            onClick={handleConfirm}
+            className="btn btn-danger"
+            style={{ flex: 1 }}
+          >
             Видалити
           </button>
-          <button onClick={handleClose} className="btn btn-secondary" style={{ flex: 1 }}>
+          <button
+            onClick={handleClose}
+            className="btn btn-secondary"
+            style={{ flex: 1 }}
+          >
             Назад
           </button>
         </div>
