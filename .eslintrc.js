@@ -24,6 +24,7 @@ module.exports = {
     'react/no-array-index-key': 'off', // разрешает index в качестве ключей (key)
     'react-hooks/exhaustive-deps': 'warn', // зависимости useEffect теперь не валят сборку
     'jsx-a11y/label-has-associated-control': 'off', // отключаем правило, конфликтующее с нашей разметкой
+    'jsx-a11y/control-has-associated-label': 'off', // отключаем правило, конфликтующее с нашей разметкой
   },
   parserOptions: {
     ecmaVersion: 2022,

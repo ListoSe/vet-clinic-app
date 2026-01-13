@@ -110,7 +110,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
     } else {
       setDynamicTreatments([{ medicine: '', dose: '', duration: '' }]);
     }
-  }, [editingRecordIndex, isAddingNote, viewingMedicalHistory]);
+  }, [editingRecordIndex, isAddingNote, viewingMedicalHistory, medicalRecords]);
 
   const addTreatmentField = () =>
     setDynamicTreatments([
