@@ -50,6 +50,13 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
   const [editingOwner, setEditingOwner] = useState<Owner | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const emojiMap: { [key: string]: string } = {
+    собака: '🐕',
+    кіт: '🐈',
+    папуга: '🦜',
+    'хом’як': '🐹',
+    рибка: '🐟',
+  };
 
   const filteredOwners = owners
     .filter(
@@ -164,7 +171,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                           border: '1px solid #dbeafe',
                         }}
                       >
-                        {pet.species === 'собака' ? '🐕' : '🐈'} {pet.name}
+                        {emojiMap[pet.species] || '🐾'} {pet.name}
                       </span>
                     ))}
                   </div>
