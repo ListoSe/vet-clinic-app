@@ -172,13 +172,36 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   const handleSaveAnimal = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!isAdmin) return;
+
     const formData = new FormData(e.currentTarget);
+    // Отримуємо значення типу тварини
+    const rawType = formData.get('type') as string;
+    const typeValue = rawType ? rawType.trim() : '';
+
+    // --- ВАЛІДАЦІЯ ---
+    // 1. Перевіряємо на порожнє значення
+    // 2. Перевіряємо, щоб не було збережено технічне слово "custom"
+    if (!typeValue || typeValue === 'custom') {
+      setErrorMessage(
+        'Будь ласка, вкажіть коректний вид тварини (наприклад, Кіт або Собака)',
+      );
+      // Якщо ви використовуєте браузерний alert, розкоментуйте наступний рядок:
+      // alert('Будь ласка, вкажіть коректний вид тварини');
+      return;
+    }
+
     const animalData = {
-      name: formData.get('name') as string,
-      type: formData.get('type') as string,
+      name: (formData.get('name') as string).trim(),
+      type: typeValue,
       age: Number(formData.get('age')),
       ownerId: formData.get('ownerId') as string,
     };
+
+    // Додаткова перевірка імені (щоб не було порожнім)
+    if (!animalData.name) {
+      setErrorMessage('Кличка тварини обов’язкова');
+      return;
+    }
 
     if (editingAnimal) {
       setAnimals(
@@ -189,7 +212,13 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
     } else {
       setAnimals([...animals, { ...animalData, id: Date.now().toString() }]);
     }
+
+    // Очищуємо помилки та закриваємо форму
+    setErrorMessage('');
     setIsFormOpen(false);
+    // Скидаємо стани вибору типу (якщо ви додавали їх раніше)
+    // setSelectedType('');
+    // setIsCustomType(false);
   };
 
   const handleSaveMedicalEntry = (e: React.FormEvent<HTMLFormElement>) => {
@@ -366,7 +395,9 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                   {!isCustomType ? (
                     <select
                       className="input-field"
+                      name="type" // Додаємо name сюди
                       value={selectedType}
+                      required // Це активує підказку браузера
                       disabled={!isAdmin}
                       onChange={(e) => {
                         if (e.target.value === 'custom') {
@@ -376,9 +407,8 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                           setSelectedType(e.target.value);
                         }
                       }}
-                      // Используем скрытый input для передачи значения в FormData при submit
                     >
-                      <option value="">Выберите вид...</option>
+                      <option value="">Оберіть вид...</option>
                       {Object.keys(emojiMap).map((type) => (
                         <option key={type} value={type}>
                           {type}
@@ -388,21 +418,27 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                         value="custom"
                         style={{ fontWeight: 'bold', color: 'var(--primary)' }}
                       >
-                        + Свой вариант...
+                        + Свій варіант...
                       </option>
                     </select>
                   ) : (
                     <div style={{ position: 'relative' }}>
                       <input
                         className="input-field"
-                        placeholder="Введите вид..."
+                        name="type" // І сюди теж
+                        placeholder="Введіть вид..."
                         value={selectedType}
                         autoFocus
+                        required // Якщо користувач вибрав свій варіант, але не ввів текст
+                        disabled={!isAdmin}
                         onChange={(e) => setSelectedType(e.target.value)}
                       />
                       <button
                         type="button"
-                        onClick={() => setIsCustomType(false)}
+                        onClick={() => {
+                          setIsCustomType(false);
+                          setSelectedType('');
+                        }}
                         style={{
                           position: 'absolute',
                           right: '5px',
@@ -410,15 +446,13 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          fontSize: '10px',
+                          fontSize: '12px',
                         }}
                       >
-                        ↩ назад
+                        ↩
                       </button>
                     </div>
                   )}
-                  {/* Скрытый инпут, который реально отправляет данные в форму */}
-                  <input type="hidden" name="type" value={selectedType} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="input-label">Вік</label>
@@ -453,6 +487,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                     type="submit"
                     className="btn btn-primary"
                     style={{ flex: 1 }}
+                    // Кнопка не натискається, якщо вибрано "custom" або поле порожнє
                   >
                     Зберегти
                   </button>
