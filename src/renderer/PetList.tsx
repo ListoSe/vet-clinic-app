@@ -40,6 +40,14 @@ interface AnimalListProps {
   };
 }
 
+const emojiMap: { [key: string]: string } = {
+  Кіт: '🐈',
+  Собака: '🐕',
+  Папуга: '🦜',
+  'Хом’як': '🐹',
+  Рибка: '🐟',
+};
+
 export default function AnimalList({ currentUser }: AnimalListProps) {
   const isAdmin = currentUser?.role === 'admin';
   const isVet = currentUser?.role === 'vet';
@@ -57,7 +65,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
       age: 3,
       ownerId: '1',
     },
-    { id: '2', name: 'Бобик', type: 'Пес', age: 5, ownerId: '2' },
+    { id: '2', name: 'Бобик', type: 'Собака', age: 5, ownerId: '2' },
   ]);
 
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([
@@ -94,6 +102,9 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const [selectedType, setSelectedType] = useState('');
+  const [isCustomType, setIsCustomType] = useState(false);
+
   // --- СТАН ДЛЯ ДИНАМІЧНИХ ПОЛІВ (З DURATION) ---
   const [dynamicTreatments, setDynamicTreatments] = useState<Treatment[]>([
     { medicine: '', dose: '', duration: '' },
@@ -111,6 +122,18 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
       setDynamicTreatments([{ medicine: '', dose: '', duration: '' }]);
     }
   }, [editingRecordIndex, isAddingNote, viewingMedicalHistory, medicalRecords]);
+
+  // Обновляем состояние при открытии формы редактирования
+  useEffect(() => {
+    if (editingAnimal) {
+      const typeExists = Object.keys(emojiMap).includes(editingAnimal.type);
+      setSelectedType(editingAnimal.type);
+      setIsCustomType(!typeExists);
+    } else {
+      setSelectedType('');
+      setIsCustomType(false);
+    }
+  }, [editingAnimal, isFormOpen]);
 
   const addTreatmentField = () =>
     setDynamicTreatments([
@@ -274,7 +297,10 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                 setIsFormOpen(true);
               }}
             >
-              <td style={{ fontWeight: 'bold' }}>🐾 {a.name}</td>
+              <td style={{ fontWeight: 'bold' }}>
+                {/* Якщо тип є у словнику — виводимо його емодзі, інакше стандартну лапку */}
+                {emojiMap[a.type] || '🐾'} {a.name}
+              </td>
               <td>
                 <span
                   style={{
@@ -337,13 +363,62 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label className="input-label">Вид</label>
-                  <input
-                    name="type"
-                    defaultValue={editingAnimal?.type}
-                    className="input-field"
-                    required
-                    readOnly={!isAdmin}
-                  />
+                  {!isCustomType ? (
+                    <select
+                      className="input-field"
+                      value={selectedType}
+                      disabled={!isAdmin}
+                      onChange={(e) => {
+                        if (e.target.value === 'custom') {
+                          setIsCustomType(true);
+                          setSelectedType('');
+                        } else {
+                          setSelectedType(e.target.value);
+                        }
+                      }}
+                      // Используем скрытый input для передачи значения в FormData при submit
+                    >
+                      <option value="">Выберите вид...</option>
+                      {Object.keys(emojiMap).map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                      <option
+                        value="custom"
+                        style={{ fontWeight: 'bold', color: 'var(--primary)' }}
+                      >
+                        + Свой вариант...
+                      </option>
+                    </select>
+                  ) : (
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="input-field"
+                        placeholder="Введите вид..."
+                        value={selectedType}
+                        autoFocus
+                        onChange={(e) => setSelectedType(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomType(false)}
+                        style={{
+                          position: 'absolute',
+                          right: '5px',
+                          top: '5px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                        }}
+                      >
+                        ↩ назад
+                      </button>
+                    </div>
+                  )}
+                  {/* Скрытый инпут, который реально отправляет данные в форму */}
+                  <input type="hidden" name="type" value={selectedType} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="input-label">Вік</label>

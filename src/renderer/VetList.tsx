@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import icon from './icon.png';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 
@@ -18,6 +18,7 @@ interface VetListProps {
 }
 
 export default function VetList({ currentUser }: VetListProps) {
+  // --- СТАН ДАНИХ ---
   const [vets, setVets] = useState<Vet[]>([
     {
       id: 1,
@@ -35,37 +36,61 @@ export default function VetList({ currentUser }: VetListProps) {
     },
   ]);
 
+  // --- СТАНИ ІНТЕРФЕЙСУ ---
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVet, setEditingVet] = useState<Vet | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  // Спрощені стани для видалення
+  // --- СТАНИ ВИДАЛЕННЯ ---
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // --- ЕФЕКТИ ---
+  // Синхронізуємо превью при відкритті модалки
+  useEffect(() => {
+    if (isModalOpen) {
+      setPhotoPreview(editingVet?.photoUrl || null);
+    } else {
+      setPhotoPreview(null);
+    }
+  }, [isModalOpen, editingVet]);
+
+  // --- ОБРОБНИКИ ПОДІЙ ---
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+
     const vetData = {
       name: formData.get('name') as string,
       phone: formData.get('phone') as string,
       description: formData.get('description') as string,
+      photoUrl: photoPreview || icon,
     };
 
     if (editingVet) {
       setVets(
-        vets.map((v) =>
-          v.id === editingVet.id ? { ...editingVet, ...vetData } : v,
-        ),
+        vets.map((v) => (v.id === editingVet.id ? { ...v, ...vetData } : v)),
       );
     } else {
-      setVets([...vets, { ...vetData, id: Date.now(), photoUrl: icon }]);
+      setVets([...vets, { ...vetData, id: Date.now() }]);
     }
+
     setIsModalOpen(false);
   };
 
-  // Нова функція підтвердження видалення для ConfirmDeleteModal
   const handleConfirmDelete = (password: string) => {
     const correctPassword = currentUser?.password || '1234';
     if (password === correctPassword) {
@@ -171,9 +196,56 @@ export default function VetList({ currentUser }: VetListProps) {
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
-              {editingVet ? 'Редагувати профіль' : 'Новий фахівець'}
-            </h3>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <h3 style={{ marginTop: 0 }}>
+                {editingVet ? 'Редагувати профіль' : 'Новий фахівець'}
+              </h3>
+
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div
+                  onClick={() =>
+                    document.getElementById('photo-upload')?.click()
+                  }
+                  style={{
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    backgroundColor: '#f0f0f0',
+                    border: '2px dashed #ccc',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    margin: '0 auto',
+                  }}
+                >
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Preview"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '12px', color: '#666' }}>
+                      Додати фото
+                    </span>
+                  )}
+                </div>
+                <input
+                  id="photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  style={{ display: 'none' }}
+                />
+              </div>
+            </div>
+
             <form onSubmit={handleSave}>
               <label className="input-label">ПІБ Лікаря</label>
               <input
@@ -199,7 +271,7 @@ export default function VetList({ currentUser }: VetListProps) {
                 style={{ height: '80px', resize: 'none' }}
               />
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button
                   type="submit"
                   className="btn btn-primary"
@@ -221,7 +293,6 @@ export default function VetList({ currentUser }: VetListProps) {
         </div>
       )}
 
-      {/* ВИКОРИСТАННЯ СПІЛЬНОЇ МОДАЛКИ ВИДАЛЕННЯ */}
       <ConfirmDeleteModal
         isOpen={deleteConfirmId !== null}
         onClose={() => setDeleteConfirmId(null)}
