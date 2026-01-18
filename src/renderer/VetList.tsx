@@ -142,14 +142,17 @@ export default function VetList({ currentUser }: VetListProps) {
     // Для простоти робимо запит до API:
     try {
       if (deleteConfirmId) {
-        await api.delete(`/users/${deleteConfirmId}`);
+        await api.delete(`/users/${deleteConfirmId}`, {
+          data: { password },
+        });
         setDeleteConfirmId(null);
         setErrorMessage('');
         loadData();
       }
-    } catch (err) {
+    } catch (err: any) {
       setErrorMessage(
-        'Не вдалося видалити. Можливо, невірний пароль або права.',
+        err.response?.data?.message ||
+          'Не вдалося видалити. Можливо, невірний пароль або права.',
       );
     }
   };
@@ -288,9 +291,11 @@ export default function VetList({ currentUser }: VetListProps) {
                   {photoPreview || editingVet?.photo ? (
                     <img
                       src={
-                        photoPreview?.startsWith('data:image')
+                        photoPreview?.startsWith('data:image') // 1. Якщо це нове завантажене фото (Base64)
                           ? photoPreview
-                          : `${SERVER_URL}${photoPreview || editingVet?.photo}`
+                          : photoPreview || editingVet?.photo // 2. Якщо це шлях з бази
+                            ? `${SERVER_URL}${photoPreview || editingVet?.photo}`
+                            : icon // 3. Якщо фото взагалі немає
                       }
                       alt="Preview"
                       style={{

@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import api from '../api/api';
 
 interface Pet {
+  id: string;
   name: string;
   species: string; // собака, кіт і т.д.
 }
 
 interface Owner {
-  id: number;
+  id: string;
   name: string;
   phone: string;
   email?: string;
@@ -17,39 +19,27 @@ interface Owner {
 interface OwnersListProps {
   currentUser?: {
     name: string;
-    password?: string;
-    roles: 'admin' | 'vet';
+    roles: string[];
   };
 }
 
 export default function OwnersList({ currentUser }: OwnersListProps) {
-  const [owners, setOwners] = useState<Owner[]>([
-    {
-      id: 1,
-      name: 'Петро Петренко',
-      phone: '0509876543',
-      email: 'mihail@example.com',
-      pets: [
-        { name: 'Бакс', species: 'собака' },
-        { name: 'Мурка', species: 'кіт' },
-      ],
-    },
-    {
-      id: 2,
-      name: 'Олена Іванова',
-      phone: '0671234567',
-      email: 'pavel@example.com',
-      pets: [{ name: 'Рекс', species: 'собака' }],
-    },
-  ]);
+  // --- СТАН ДАНИХ ---
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const isAdmin = currentUser?.roles.includes('ADMIN');
+  // --- СТАНИ ІНТЕРФЕЙСУ ---
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
+  // --- СТАНИ ВИДАЛЕННЯ ---
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const isAdmin = currentUser?.roles?.includes('ADMIN');
+
   const emojiMap: { [key: string]: string } = {
     собака: '🐕',
     кіт: '🐈',
@@ -58,18 +48,36 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
     рибка: '🐟',
   };
 
+  // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get<Owner[]>('/owners');
+      setOwners(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Помилка завантаження власників:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const filteredOwners = owners
     .filter(
       (o) =>
-        o.name.toLowerCase().includes(search.toLowerCase()) ||
-        o.pets.some((p) => p.name.toLowerCase().includes(search.toLowerCase())), // Пошук також по кличці тварини
+        (o.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        o.pets?.some((p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()),
+        ), // Пошук також по кличці тварини
     )
     .sort((a, b) => (a.name < b.name ? (sortAsc ? -1 : 1) : sortAsc ? 1 : -1));
 
-  // ... handleSave та handleConfirmDelete залишаються такими ж ...
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  // --- ОБРОБНИКИ ПОДІЙ ---
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isAdmin) return;
     const formData = new FormData(e.currentTarget);
     const ownerData = {
       name: formData.get('name') as string,
@@ -77,28 +85,37 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
       email: formData.get('email') as string,
     };
 
-    if (editingOwner) {
-      setOwners(
-        owners.map((o) =>
-          o.id === editingOwner.id ? { ...o, ...ownerData } : o,
-        ),
-      );
-    } else {
-      setOwners([...owners, { ...ownerData, id: Date.now(), pets: [] }]); // Новий власник без тварин
+    try {
+      if (editingOwner) {
+        await api.patch(`/owners/${editingOwner.id}`, ownerData);
+      } else {
+        await api.post('/owners', ownerData);
+      }
+      setIsModalOpen(false);
+      loadData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Помилка при збереженні');
     }
-    setIsModalOpen(false);
   };
 
-  const handleConfirmDelete = (password: string) => {
-    const passwordToMatch = currentUser?.password || '1234';
-    if (password === passwordToMatch) {
-      setOwners(owners.filter((o) => o.id !== deleteConfirmId));
-      setDeleteConfirmId(null);
-      setErrorMessage('');
-    } else {
-      setErrorMessage('Невірний пароль!');
+  const handleConfirmDelete = async (password: string) => {
+    try {
+      if (deleteConfirmId) {
+        await api.delete(`/owners/${deleteConfirmId}`, {
+          data: { password },
+        });
+        setDeleteConfirmId(null);
+        setErrorMessage('');
+        loadData();
+      }
+    } catch (err: any) {
+      setErrorMessage(
+        err.response?.data?.message || 'Помилка видалення. Перевірте пароль.',
+      );
     }
   };
+
+  if (loading) return <div style={{ padding: '20px' }}>Завантаження...</div>;
 
   return (
     <div className="list-container">
@@ -155,7 +172,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                 <div style={{ fontWeight: '600' }}>👤 {o.name}</div>
               </td>
               <td>
-                {o.pets.length > 0 ? (
+                {o.pets && o.pets.length > 0 ? (
                   <div
                     style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
                   >
@@ -245,7 +262,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                 readOnly={!isAdmin}
               />
 
-              {editingOwner && (
+              {editingOwner?.pets && editingOwner.pets.length > 0 && (
                 <div style={{ marginBottom: '15px' }}>
                   <label className="input-label">Тварини власника</label>
                   <div
@@ -261,8 +278,8 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                         key={i}
                         style={{ fontSize: '14px', marginBottom: '4px' }}
                       >
-                        {p.species === 'собака' ? '🐕' : '🐈'}{' '}
-                        <strong>{p.name}</strong> ({p.species})
+                        {emojiMap[p.species] || '🐾'} <strong>{p.name}</strong>{' '}
+                        ({p.species})
                       </div>
                     ))}
                   </div>
