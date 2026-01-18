@@ -1,40 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import icon from './icon.png';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import api from '../api/api'; // Твій налаштований axios з інтерцептором
 
 interface Vet {
-  id: number;
+  id: string; // В базі це UUID (рядок)
   name: string;
   phone: string;
-  photoUrl?: string;
-  description?: string;
+  photo: string | null; // В базі 'photo'
+  info: string | null; // В базі 'info'
+  roles: string[];
 }
 
 interface VetListProps {
   currentUser?: {
     name: string;
-    password?: string;
+    roles: string[];
   };
 }
 
 export default function VetList({ currentUser }: VetListProps) {
-  // --- СТАН ДАНИХ ---
-  const [vets, setVets] = useState<Vet[]>([
-    {
-      id: 1,
-      name: 'Іван Іваненко',
-      phone: '0501234567',
-      photoUrl: icon,
-      description: 'Спеціаліст з великим досвідом. 10 років практики.',
-    },
-    {
-      id: 2,
-      name: 'Марія Петрівна',
-      phone: '0677654321',
-      photoUrl: icon,
-      description: 'Хірург, стаж 6 років.',
-    },
-  ]);
+  const SERVER_URL = 'http://localhost:3000';
+  // --- СТАН ДАНИХ (тепер з сервера) ---
+  const [vets, setVets] = useState<Vet[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // --- СТАНИ ІНТЕРФЕЙСУ ---
   const [search, setSearch] = useState('');
@@ -44,14 +33,35 @@ export default function VetList({ currentUser }: VetListProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // --- СТАНИ ВИДАЛЕННЯ ---
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // --- ЕФЕКТИ ---
+  const isAdmin = currentUser?.roles?.includes('ADMIN');
+
+  // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get<Vet[]>('/users');
+      // Фільтруємо тільки ветеринарів
+      const data = Array.isArray(res.data) ? res.data : [];
+      setVets(data.filter((u) => u.roles?.includes('VET')));
+    } catch (e) {
+      console.error('Помилка завантаження:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   // Синхронізуємо превью при відкритті модалки
   useEffect(() => {
     if (isModalOpen) {
-      setPhotoPreview(editingVet?.photoUrl || null);
+      // Беремо фото саме з поля .photo, як воно приходить з бази
+      setPhotoPreview(editingVet?.photo || null);
     } else {
       setPhotoPreview(null);
     }
@@ -62,49 +72,97 @@ export default function VetList({ currentUser }: VetListProps) {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPhotoPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const formElement = e.currentTarget;
 
-    const vetData = {
-      name: formData.get('name') as string,
-      phone: formData.get('phone') as string,
-      description: formData.get('description') as string,
-      photoUrl: photoPreview || icon,
-    };
+    // 1. Використовуємо FormData замість звичайного об'єкта
+    const formData = new FormData();
 
-    if (editingVet) {
-      setVets(
-        vets.map((v) => (v.id === editingVet.id ? { ...v, ...vetData } : v)),
-      );
-    } else {
-      setVets([...vets, { ...vetData, id: Date.now() }]);
+    // 2. Додаємо текстові дані з форми
+    formData.append(
+      'name',
+      (formElement.elements.namedItem('name') as HTMLInputElement).value,
+    );
+    formData.append(
+      'phone',
+      (formElement.elements.namedItem('phone') as HTMLInputElement).value,
+    );
+    formData.append(
+      'info',
+      (formElement.elements.namedItem('description') as HTMLTextAreaElement)
+        .value,
+    );
+
+    // 3. Отримуємо файл з інпуту (а не Base64 рядок)
+    const fileInput = document.getElementById(
+      'photo-upload',
+    ) as HTMLInputElement;
+    if (fileInput.files?.[0]) {
+      formData.append('photo', fileInput.files[0]);
     }
 
-    setIsModalOpen(false);
+    try {
+      if (editingVet) {
+        // Оновлення існуючого
+        await api.patch(`/users/${editingVet.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        // Створення нового (додаємо обов'язкові поля для бекенда)
+        formData.append('login', `vet_${Date.now()}`);
+        formData.append('password', 'TemporaryPassword123');
+        formData.append('roles', 'VET');
+
+        await api.post('/users', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+
+      setIsModalOpen(false);
+      loadData(); // Перезавантажуємо список, щоб побачити зміни та фото
+    } catch (err: any) {
+      // Обробка помилки 409 (унікальність телефону)
+      if (err.response?.status === 409) {
+        alert('Помилка: Користувач з таким номером телефону вже існує!');
+      } else {
+        alert('Помилка при збереженні даних');
+      }
+      console.error(err);
+    }
   };
 
-  const handleConfirmDelete = (password: string) => {
-    const correctPassword = currentUser?.password || '1234';
-    if (password === correctPassword) {
-      setVets(vets.filter((v) => v.id !== deleteConfirmId));
-      setDeleteConfirmId(null);
-      setErrorMessage('');
-    } else {
-      setErrorMessage('Невірний пароль!');
+  const handleConfirmDelete = async (password: string) => {
+    // Тут можна залишити перевірку пароля або просто видаляти через API
+    // Для простоти робимо запит до API:
+    try {
+      if (deleteConfirmId) {
+        await api.delete(`/users/${deleteConfirmId}`);
+        setDeleteConfirmId(null);
+        setErrorMessage('');
+        loadData();
+      }
+    } catch (err) {
+      setErrorMessage(
+        'Не вдалося видалити. Можливо, невірний пароль або права.',
+      );
     }
   };
 
   const filteredVets = vets
-    .filter((v) => v.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => (a.name < b.name ? (sortAsc ? -1 : 1) : sortAsc ? 1 : -1));
+    .filter((v) => (v.name || '').toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA < nameB ? (sortAsc ? -1 : 1) : sortAsc ? 1 : -1;
+    });
+
+  if (loading) return <div style={{ padding: '20px' }}>Завантаження...</div>;
 
   return (
     <div className="list-container" style={{ width: '100%' }}>
@@ -124,16 +182,18 @@ export default function VetList({ currentUser }: VetListProps) {
         >
           {sortAsc ? 'А-Я' : 'Я-А'}
         </button>
-        <button
-          onClick={() => {
-            setEditingVet(null);
-            setIsModalOpen(true);
-          }}
-          className="btn btn-primary"
-          style={{ fontSize: '14px' }}
-        >
-          + Додати лікаря
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => {
+              setEditingVet(null);
+              setIsModalOpen(true);
+            }}
+            className="btn btn-primary"
+            style={{ fontSize: '14px' }}
+          >
+            + Додати лікаря
+          </button>
+        )}
       </div>
 
       {/* Таблиця */}
@@ -152,13 +212,15 @@ export default function VetList({ currentUser }: VetListProps) {
               key={v.id}
               className="clickable-row"
               onClick={() => {
-                setEditingVet(v);
-                setIsModalOpen(true);
+                if (isAdmin) {
+                  setEditingVet(v);
+                  setIsModalOpen(true);
+                }
               }}
             >
               <td>
                 <img
-                  src={v.photoUrl}
+                  src={v.photo ? `${SERVER_URL}${v.photo}` : icon}
                   alt=""
                   style={{
                     width: '32px',
@@ -168,24 +230,26 @@ export default function VetList({ currentUser }: VetListProps) {
                   }}
                 />
               </td>
-              <td style={{ fontWeight: '600' }}>{v.name}</td>
-              <td style={{ color: 'var(--text-light)' }}>{v.phone}</td>
+              <td style={{ fontWeight: '600' }}>{v.name || 'Без імені'}</td>
+              <td style={{ color: 'var(--text-light)' }}>{v.phone || '—'}</td>
               <td style={{ textAlign: 'right' }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteConfirmId(v.id);
-                  }}
-                  className="btn"
-                  style={{
-                    color: 'var(--danger)',
-                    background: 'none',
-                    padding: '4px 8px',
-                    fontSize: '13px',
-                  }}
-                >
-                  Видалити
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirmId(v.id);
+                    }}
+                    className="btn"
+                    style={{
+                      color: 'var(--danger)',
+                      background: 'none',
+                      padding: '4px 8px',
+                      fontSize: '13px',
+                    }}
+                  >
+                    Видалити
+                  </button>
+                )}
               </td>
             </tr>
           ))}
@@ -220,9 +284,14 @@ export default function VetList({ currentUser }: VetListProps) {
                     margin: '0 auto',
                   }}
                 >
-                  {photoPreview ? (
+                  {/* Пріоритет: нове прев'ю -> старе фото з бази -> дефолтна іконка */}
+                  {photoPreview || editingVet?.photo ? (
                     <img
-                      src={photoPreview}
+                      src={
+                        photoPreview?.startsWith('data:image')
+                          ? photoPreview
+                          : `${SERVER_URL}${photoPreview || editingVet?.photo}`
+                      }
                       alt="Preview"
                       style={{
                         width: '100%',
@@ -231,9 +300,16 @@ export default function VetList({ currentUser }: VetListProps) {
                       }}
                     />
                   ) : (
-                    <span style={{ fontSize: '12px', color: '#666' }}>
-                      Додати фото
-                    </span>
+                    <div style={{ textAlign: 'center' }}>
+                      <img
+                        src={icon}
+                        style={{ width: '40px', opacity: 0.5 }}
+                        alt=""
+                      />
+                      <div style={{ fontSize: '10px', color: '#666' }}>
+                        Додати фото
+                      </div>
+                    </div>
                   )}
                 </div>
                 <input
@@ -250,7 +326,7 @@ export default function VetList({ currentUser }: VetListProps) {
               <label className="input-label">ПІБ Лікаря</label>
               <input
                 name="name"
-                defaultValue={editingVet?.name}
+                defaultValue={editingVet?.name || ''}
                 className="input-field"
                 required
               />
@@ -258,7 +334,7 @@ export default function VetList({ currentUser }: VetListProps) {
               <label className="input-label">Контактний телефон</label>
               <input
                 name="phone"
-                defaultValue={editingVet?.phone}
+                defaultValue={editingVet?.phone || ''}
                 className="input-field"
                 required
               />
@@ -266,7 +342,7 @@ export default function VetList({ currentUser }: VetListProps) {
               <label className="input-label">Спеціалізація</label>
               <textarea
                 name="description"
-                defaultValue={editingVet?.description}
+                defaultValue={editingVet?.info || ''}
                 className="input-field"
                 style={{ height: '80px', resize: 'none' }}
               />

@@ -19,27 +19,33 @@ export default function Login({ setUser }: { setUser: any }) {
     }
 
     setError('');
-    // setUser(user); // Передаємо весь об'єкт (включаючи name та password) в App.tsx
-    const response = await api.post<
-      Record<string, any>,
-      { data: Record<string, any> }
-    >('/auth/login', {
-      login,
-      password,
-    });
 
-    console.log(response);
+    try {
+      const response = await api.post('/auth/login', {
+        login,
+        password,
+      });
 
-    const { user } = response.data;
+      // Зверни увагу: деструктуризуємо саме access_token (як у твоєму JSON)
+      const { user, access_token: accessToken } = response.data;
 
-    if (user) {
-      setUser(user);
+      if (user && accessToken) {
+        // 1. Зберігаємо токен під ключем 'accessToken' (або як ти вказав у axios interceptor)
+        localStorage.setItem('accessToken', accessToken);
 
-      if (user.roles.includes('VET')) {
-        navigate('/vet');
-      } else if (user.roles.includes('ADMIN')) {
-        navigate('/admin');
+        // 2. Зберігаємо користувача
+        setUser(user);
+
+        // 3. Навігація (roles — це масив рядків великими літерами)
+        if (user.roles.includes('ADMIN')) {
+          navigate('/admin');
+        } else if (user.roles.includes('VET')) {
+          navigate('/vet');
+        }
       }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || 'Невірний логін або пароль');
     }
   };
 

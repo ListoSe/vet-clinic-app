@@ -51,6 +51,7 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('accessToken'); // Обов'язково чистимо токен
   };
 
   return (
