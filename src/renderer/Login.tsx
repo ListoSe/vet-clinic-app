@@ -1,57 +1,45 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Додав поле 'name' для кожного користувача
-const users = [
-  {
-    id: '1',
-    role: 'admin',
-    name: 'Адміністратор',
-    email: 'admin@mail.com',
-    password: '12345678',
-  },
-  {
-    id: '2',
-    role: 'vet',
-    name: 'Черговий лікар',
-    email: 'vet@mail.com',
-    password: '1234',
-  },
-];
+import api from '../api/api';
 
 export default function Login({ setUser }: { setUser: any }) {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!login || !password) {
       setError('Будь ласка, заповніть усі поля');
       return;
     }
 
-    const user = users.find(
-      (u) => u.email === email && u.password === password,
-    );
-
-    if (!user) {
-      setError('Невірний логін або пароль!');
-      return;
-    }
-
     setError('');
-    setUser(user); // Передаємо весь об'єкт (включаючи name та password) в App.tsx
+    // setUser(user); // Передаємо весь об'єкт (включаючи name та password) в App.tsx
+    const response = await api.post<
+      Record<string, any>,
+      { data: Record<string, any> }
+    >('/auth/login', {
+      login,
+      password,
+    });
 
-    // Редірект залежно від ролі
-    if (user.role === 'vet') {
-      navigate('/vet');
-    } else if (user.role === 'admin') {
-      navigate('/admin');
+    console.log(response);
+
+    const { user } = response.data;
+
+    if (user) {
+      setUser(user);
+
+      if (user.roles.includes('VET')) {
+        navigate('/vet');
+      } else if (user.roles.includes('ADMIN')) {
+        navigate('/admin');
+      }
     }
   };
 
@@ -70,13 +58,13 @@ export default function Login({ setUser }: { setUser: any }) {
 
         {error && <div className="error-banner">{error}</div>}
 
-        <label className="input-label">Email</label>
+        <label className="input-label">Login</label>
         <input
-          type="email"
+          type="text"
           className="input-field"
-          placeholder="email@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          placeholder="login"
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
           required
         />
 

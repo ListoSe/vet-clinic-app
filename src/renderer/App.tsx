@@ -24,8 +24,12 @@ function ProtectedRoute({
   // Если пользователя нет — на страницу входа
   if (!user) return <Navigate to="/" replace />;
 
-  // Если роль не совпадает — можно кидать на страницу "Доступ запрещен" или обратно
-  if (user.role !== requiredRole) return <Navigate to="/" replace />;
+  // Сравниваем роли без учета регистра, чтобы избежать конфликтов (admin vs ADMIN)
+  const rolesUpper = (user.roles || []).map((r: string) =>
+    String(r).toUpperCase(),
+  );
+  if (!rolesUpper.includes(String(requiredRole).toUpperCase()))
+    return <Navigate to="/" replace />;
 
   return children;
 }
@@ -58,7 +62,7 @@ export default function App() {
           element={
             user ? (
               <Navigate
-                to={user.role === 'admin' ? '/admin' : '/vet'}
+                to={user.roles.includes('ADMIN') ? '/admin' : '/vet'}
                 replace
               />
             ) : (
@@ -71,7 +75,7 @@ export default function App() {
         <Route
           path="/vet"
           element={
-            <ProtectedRoute user={user} requiredRole="vet">
+            <ProtectedRoute user={user} requiredRole="VET">
               <Vet user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }
@@ -81,7 +85,7 @@ export default function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute user={user} requiredRole="admin">
+            <ProtectedRoute user={user} requiredRole="ADMIN">
               <Admin user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }

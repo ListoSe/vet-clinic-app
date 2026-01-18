@@ -36,7 +36,7 @@ interface AnimalListProps {
     id?: string;
     name: string;
     password?: string;
-    role: 'admin' | 'vet';
+    roles: 'admin' | 'vet';
   };
 }
 
@@ -49,8 +49,8 @@ const emojiMap: { [key: string]: string } = {
 };
 
 export default function AnimalList({ currentUser }: AnimalListProps) {
-  const isAdmin = currentUser?.role === 'admin';
-  const isVet = currentUser?.role === 'vet';
+  const isAdmin = currentUser?.roles.includes('ADMIN');
+  const isVet = currentUser?.roles.includes('VET');
 
   const [owners] = useState<Owner[]>([
     { id: '1', name: 'Петро Петренко' },

@@ -15,15 +15,15 @@ interface Record {
 interface RecordsListProps {
   currentUser?: {
     name: string;
-    role: 'admin' | 'vet';
+    roles: 'admin' | 'vet';
     password?: string;
   };
 }
 
 export default function RecordsList({ currentUser }: RecordsListProps) {
   // Визначаємо ролі для зручності
-  const isAdmin = currentUser?.role === 'admin';
-  const isVet = currentUser?.role === 'vet';
+  const isAdmin = currentUser?.roles.includes('ADMIN');
+  const isVet = currentUser?.roles.includes('VET');
 
   const [records, setRecords] = useState<Record[]>([
     {

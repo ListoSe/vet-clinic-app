@@ -18,7 +18,7 @@ interface OwnersListProps {
   currentUser?: {
     name: string;
     password?: string;
-    role: 'admin' | 'vet';
+    roles: 'admin' | 'vet';
   };
 }
 
@@ -43,7 +43,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
     },
   ]);
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.roles.includes('ADMIN');
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
