@@ -1,52 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import api from '../api/api';
 
 interface Record {
-  id: number;
-  petName: string;
-  ownerName: string;
-  vetName: string;
-  date: string;
+  id: string | number;
+  petId: string;
+  userId: string;
+  visitDate: string;
   reason: string;
-  details: string;
-  status: 'Заплановано' | 'Завершено' | 'Скасовано';
+  visitDetails: string;
+  status: 'NEW' | 'COMPLETED' | 'CANCELLED';
+  pet?: { name: string };
+  user?: { name: string };
 }
 
 interface RecordsListProps {
   currentUser?: {
     name: string;
-    roles: 'admin' | 'vet';
+    roles: string[];
     password?: string;
   };
 }
+const STATUS_LABELS: { [key: string]: string } = {
+  NEW: 'Новий',
+  COMPLETED: 'Завершено',
+  CANCELLED: 'Скасовано',
+};
 
 export default function RecordsList({ currentUser }: RecordsListProps) {
   // Визначаємо ролі для зручності
   const isAdmin = currentUser?.roles.includes('ADMIN');
   const isVet = currentUser?.roles.includes('VET');
 
-  const [records, setRecords] = useState<Record[]>([
-    {
-      id: 1,
-      petName: 'Бакс',
-      ownerName: 'Іван Іванов',
-      vetName: 'Д-р Коваль',
-      date: '2024-05-20',
-      reason: 'Щеплення',
-      details: 'Перша вакцинація.',
-      status: 'Заплановано',
-    },
-    {
-      id: 2,
-      petName: 'Мурка',
-      ownerName: 'Ганна Сидорова',
-      vetName: 'Д-р Петренко',
-      date: '2024-05-19',
-      reason: 'Огляд',
-      details: 'Скарги на апетит.',
-      status: 'Завершено',
-    },
-  ]);
+  const [records, setRecords] = useState<any[]>([]);
+  const [owners, setOwners] = useState<any[]>([]);
+  const [vets, setVets] = useState<any[]>([]);
+  const [availablePets, setAvailablePets] = useState<any[]>([]);
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
 
   const [search, setSearch] = useState('');
   const [filterDate, setFilterDate] = useState('');
@@ -57,14 +47,46 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const loadData = useCallback(async () => {
+    try {
+      const [recsRes, ownersRes, usersRes] = await Promise.all([
+        api.get('/appointments'),
+        api.get('/owners'),
+        api.get('/users'), // Припускаємо, що ветеринари тут
+      ]);
+
+      setRecords(recsRes.data);
+      setOwners(ownersRes.data);
+      // Фільтруємо лише ветеринарів
+      setVets(usersRes.data.filter((u: any) => u.roles.includes('VET')));
+    } catch (err) {
+      console.error('Помилка завантаження списків:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Ефект для завантаження тварин, коли вибрано власника
+  useEffect(() => {
+    if (selectedOwnerId) {
+      api
+        .get(`/pets?ownerId=${selectedOwnerId}`)
+        .then((res) => setAvailablePets(res.data))
+        .catch((err) => console.error('Помилка завантаження тварин:', err));
+    } else {
+      setAvailablePets([]);
+    }
+  }, [selectedOwnerId]);
+
   const getStatusBadgeStyle = (status: string): React.CSSProperties => {
     const colors = {
-      Завершено: { bg: '#dcfce7', text: '#166534' },
-      Заплановано: { bg: '#fef3c7', text: '#92400e' },
-      Скасовано: { bg: '#fee2e2', text: '#991b1b' },
+      COMPLETED: { bg: '#dcfce7', text: '#166534' },
+      NEW: { bg: '#fef3c7', text: '#92400e' },
+      CANCELLED: { bg: '#fee2e2', text: '#991b1b' },
     };
-    const config =
-      colors[status as keyof typeof colors] || colors['Заплановано'];
+    const config = colors[status as keyof typeof colors] || colors.NEW;
     return {
       padding: '4px 10px',
       borderRadius: '6px',
@@ -79,51 +101,64 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
   const filteredRecords = records
     .filter((r) => {
       const matchesSearch =
-        r.petName.toLowerCase().includes(search.toLowerCase()) ||
-        r.vetName.toLowerCase().includes(search.toLowerCase());
-      const matchesDate = filterDate ? r.date === filterDate : true;
+        (r.pet?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (r.user?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (r.reason || '').toLowerCase().includes(search.toLowerCase());
+
+      const matchesDate = filterDate
+        ? r.visitDate?.split('T')[0] === filterDate
+        : true;
       return matchesSearch && matchesDate;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
+      const dateA = new Date(a.visitDate || 0).getTime();
+      const dateB = new Date(b.visitDate || 0).getTime();
       return sortNewest ? dateB - dateA : dateA - dateB;
     });
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const recordData = Object.fromEntries(formData.entries()) as any;
+    const appointmentData = {
+      status: formData.get('status') || 'NEW',
+      type: 'CONSULTATION',
+      userId: formData.get('userId') as string,
+      petId: formData.get('petId') as string,
+      visitDate: new Date(formData.get('visitDate') as string).toISOString(),
+      reason: formData.get('reason') as string,
+      visitDetails: formData.get('visitDetails') as string,
+    };
 
-    if (selectedRecord) {
-      // Ветеринар може змінити лише статус та деталі, інші поля беремо зі старого запису
-      const updatedRecord = isVet
-        ? {
-            ...selectedRecord,
-            status: recordData.status,
-            details: recordData.details,
-          }
-        : { ...recordData, id: selectedRecord.id };
-
-      setRecords(
-        records.map((r) => (r.id === selectedRecord.id ? updatedRecord : r)),
-      );
-    } else {
-      setRecords([...records, { ...recordData, id: Date.now() }]);
+    try {
+      if (selectedRecord) {
+        await api.patch(`/appointments/${selectedRecord.id}`, appointmentData);
+      } else {
+        await api.post('/appointments', appointmentData);
+      }
+      setIsAdding(false);
+      setSelectedRecord(null);
+      loadData();
+    } catch (err) {
+      alert('Помилка при збереженні');
     }
-    setIsAdding(false);
-    setSelectedRecord(null);
   };
 
-  const handleConfirmDelete = (password: string) => {
-    const correctPassword = currentUser?.password || '1234';
-    if (password === correctPassword) {
-      setRecords(records.filter((r) => r.id !== selectedRecord?.id));
-      setIsDeleteModalOpen(false);
-      setSelectedRecord(null);
-      setErrorMessage('');
-    } else {
-      setErrorMessage('Невірний пароль!');
+  const handleConfirmDelete = async (password: string) => {
+    try {
+      if (selectedRecord?.id) {
+        await api.delete(`/appointments/${selectedRecord.id}`, {
+          data: { password },
+        });
+        setIsDeleteModalOpen(false);
+        setSelectedRecord(null);
+        setErrorMessage('');
+
+        loadData();
+      }
+    } catch (err: any) {
+      setErrorMessage(
+        err.response?.data?.message || 'Помилка видалення. Перевірте пароль.',
+      );
     }
   };
 
@@ -177,11 +212,15 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
               className="clickable-row"
               onClick={() => setSelectedRecord(r)}
             >
-              <td>{r.date}</td>
-              <td style={{ fontWeight: '600' }}>🐾 {r.petName}</td>
-              <td>{r.vetName}</td>
               <td>
-                <span style={getStatusBadgeStyle(r.status)}>{r.status}</span>
+                {r.visitDate ? new Date(r.visitDate).toLocaleDateString() : '—'}
+              </td>
+              <td style={{ fontWeight: '600' }}>🐾 {r.pet?.name}</td>
+              <td>{r.user?.name}</td>
+              <td>
+                <span style={getStatusBadgeStyle(r.status)}>
+                  {STATUS_LABELS[r.status] || r.status}
+                </span>
               </td>
             </tr>
           ))}
@@ -207,24 +246,41 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
             <form onSubmit={handleSave}>
               <div style={{ display: 'flex', gap: '15px' }}>
                 <div style={{ flex: 1 }}>
-                  <label className="input-label">Тварина</label>
-                  <input
-                    name="petName"
-                    defaultValue={selectedRecord?.petName}
+                  <label className="input-label">Власник</label>
+                  <select
+                    name="ownerId"
                     className="input-field"
                     required
-                    readOnly={isVet && !!selectedRecord}
-                  />
+                    value={selectedOwnerId}
+                    onChange={(e) => setSelectedOwnerId(e.target.value)}
+                  >
+                    <option value="">Оберіть власника</option>
+                    {owners.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name} {o.surname}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label className="input-label">Власник</label>
-                  <input
-                    name="ownerName"
-                    defaultValue={selectedRecord?.ownerName}
+                  <label className="input-label">Тварина</label>
+                  <select
+                    name="petId"
                     className="input-field"
                     required
-                    readOnly={isVet && !!selectedRecord}
-                  />
+                    disabled={!selectedOwnerId}
+                  >
+                    <option value="">
+                      {selectedOwnerId
+                        ? 'Оберіть тварину'
+                        : 'Спочатку оберіть власника'}
+                    </option>
+                    {availablePets.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -232,9 +288,13 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                 <div style={{ flex: 1 }}>
                   <label className="input-label">Дата</label>
                   <input
-                    name="date"
+                    name="visitDate"
                     type="date"
-                    defaultValue={selectedRecord?.date}
+                    defaultValue={
+                      selectedRecord?.visitDate
+                        ? selectedRecord.visitDate.split('T')[0]
+                        : ''
+                    }
                     className="input-field"
                     required
                     readOnly={isVet && !!selectedRecord}
@@ -248,21 +308,22 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                     className="input-field"
                     style={{ cursor: 'pointer' }}
                   >
-                    <option value="Заплановано">Заплановано</option>
-                    <option value="Завершено">Завершено</option>
-                    <option value="Скасовано">Скасовано</option>
+                    <option value="NEW">Заплановано</option>
+                    <option value="COMPLETED">Завершено</option>
+                    <option value="CANCELLED">Скасовано</option>
                   </select>
                 </div>
               </div>
 
               <label className="input-label">Лікар</label>
-              <input
-                name="vetName"
-                defaultValue={selectedRecord?.vetName}
-                className="input-field"
-                required
-                readOnly={isVet && !!selectedRecord}
-              />
+              <select name="userId" className="input-field" required>
+                <option value="">Оберіть лікаря</option>
+                {vets.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
 
               <label className="input-label">Причина візиту</label>
               <input
@@ -275,8 +336,8 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
 
               <label className="input-label">Деталі прийому</label>
               <textarea
-                name="details"
-                defaultValue={selectedRecord?.details}
+                name="visitDetails"
+                defaultValue={selectedRecord?.visitDetails}
                 className="input-field"
                 style={{ height: '80px', resize: 'none' }}
               />
