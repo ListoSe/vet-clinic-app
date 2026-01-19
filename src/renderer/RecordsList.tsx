@@ -52,7 +52,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
       const [recsRes, ownersRes, usersRes] = await Promise.all([
         api.get('/appointments'),
         api.get('/owners'),
-        api.get('/users'), // Припускаємо, що ветеринари тут
+        api.get('/users'),
       ]);
 
       setRecords(recsRes.data);
@@ -67,6 +67,13 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (selectedRecord && selectedRecord.pet) {
+      const { ownerId } = selectedRecord.pet as any;
+      if (ownerId) setSelectedOwnerId(ownerId);
+    }
+  }, [selectedRecord]);
 
   // Ефект для завантаження тварин, коли вибрано власника
   useEffect(() => {
@@ -269,6 +276,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                     className="input-field"
                     required
                     disabled={!selectedOwnerId}
+                    defaultValue={selectedRecord?.petId}
                   >
                     <option value="">
                       {selectedOwnerId
@@ -316,7 +324,12 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
               </div>
 
               <label className="input-label">Лікар</label>
-              <select name="userId" className="input-field" required>
+              <select
+                name="userId"
+                className="input-field"
+                required
+                defaultValue={selectedRecord?.userId}
+              >
                 <option value="">Оберіть лікаря</option>
                 {vets.map((v) => (
                   <option key={v.id} value={v.id}>
