@@ -14,6 +14,11 @@ interface FinanceRecord {
 interface FinanceListProps {
   currentUser?: any;
 }
+const STATUS_LABELS: { [key: string]: string } = {
+  PAID: 'Оплачено',
+  PENDING: 'Очікує',
+  DEBT: 'Борг',
+};
 
 export default function FinanceList({ currentUser }: FinanceListProps) {
   const [finances, setFinances] = useState<FinanceRecord[]>([]);
@@ -74,17 +79,23 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
     0,
   );
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'PAID':
-        return { bg: '#dcfce7', text: '#166534' };
-      case 'PENDING':
-        return { bg: '#fef3c7', text: '#92400e' };
-      case 'DEBT':
-        return { bg: '#fee2e2', text: '#991b1b' };
-      default:
-        return { bg: '#eee', text: '#333' };
-    }
+  const getStatusBadgeStyle = (status: string): React.CSSProperties => {
+    const colors = {
+      PAID: { bg: '#dcfce7', text: '#166534' },
+      PENDING: { bg: '#fef3c7', text: '#92400e' },
+      DEBT: { bg: '#fee2e2', text: '#991b1b' },
+      DEFAULT: { bg: '#f3f4f6', text: '#374151' },
+    };
+    const config = colors[status as keyof typeof colors] || colors.DEFAULT;
+    return {
+      padding: '4px 10px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      backgroundColor: config.bg,
+      color: config.text,
+      display: 'inline-block',
+    };
   };
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -188,7 +199,6 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
         </thead>
         <tbody>
           {filteredFinances.map((f) => {
-            const style = getStatusStyle(f.status);
             return (
               <tr
                 key={f.id}
@@ -200,17 +210,8 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
                 <td>{f.service}</td>
                 <td style={{ fontWeight: 'bold' }}>{f.amount} грн</td>
                 <td>
-                  <span
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      backgroundColor: style.bg,
-                      color: style.text,
-                    }}
-                  >
-                    {f.status}
+                  <span style={getStatusBadgeStyle(f.status)}>
+                    {STATUS_LABELS[f.status] || f.status}
                   </span>
                 </td>
               </tr>
@@ -264,9 +265,9 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
                 className="input-field"
                 style={{ cursor: 'pointer' }}
               >
-                <option value="Оплачено">Оплачено</option>
-                <option value="Очікує">Очікує</option>
-                <option value="Борг">Борг</option>
+                <option value="PAID">Оплачено</option>
+                <option value="PENDING">Очікує</option>
+                <option value="DEBT">Борг</option>
               </select>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>

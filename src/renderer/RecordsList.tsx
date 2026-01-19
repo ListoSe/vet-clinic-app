@@ -92,8 +92,9 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
       COMPLETED: { bg: '#dcfce7', text: '#166534' },
       NEW: { bg: '#fef3c7', text: '#92400e' },
       CANCELLED: { bg: '#fee2e2', text: '#991b1b' },
+      DEFAULT: { bg: '#f3f4f6', text: '#374151' },
     };
-    const config = colors[status as keyof typeof colors] || colors.NEW;
+    const config = colors[status as keyof typeof colors] || colors.DEFAULT;
     return {
       padding: '4px 10px',
       borderRadius: '6px',
@@ -198,7 +199,11 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
         </button>
         {/* Кнопка додавання доступна всім (або можна isAdmin) */}
         <button
-          onClick={() => setIsAdding(true)}
+          onClick={() => {
+            setSelectedOwnerId('');
+            setIsAdding(true);
+            setSelectedRecord(null);
+          }}
           className="btn btn-primary"
           style={{ fontSize: '14px' }}
         >
@@ -287,11 +292,15 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                         ? 'Оберіть тварину'
                         : 'Спочатку оберіть власника'}
                     </option>
-                    {availablePets.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    {availablePets
+                      .filter(
+                        (p) => String(p.ownerId) === String(selectedOwnerId),
+                      )
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
