@@ -77,6 +77,9 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   );
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [entryToDeleteIndex, setEntryToDeleteIndex] = useState<number | null>(
+    null,
+  );
   const [errorMessage, setErrorMessage] = useState('');
 
   // Стан форми
@@ -156,22 +159,22 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   };
 
   // --- API ХЕНДЛЕРИ (ОСНОВНА ЛОГІКА) ---
-  const handleConfirmDelete = async (password: string) => {
-    try {
-      if (deleteConfirmId) {
-        await api.delete(`/pets/${deleteConfirmId}`, {
-          data: { password },
-        });
-        setDeleteConfirmId(null);
-        setErrorMessage('');
-        loadData();
-      }
-    } catch (err: any) {
-      setErrorMessage(
-        err.response?.data?.message || 'Помилка видалення. Перевірте пароль.',
-      );
-    }
-  };
+  // const handleConfirmDelete = async (password: string) => {
+  //   try {
+  //     if (deleteConfirmId) {
+  //       await api.delete(`/pets/${deleteConfirmId}`, {
+  //         data: { password },
+  //       });
+  //       setDeleteConfirmId(null);
+  //       setErrorMessage('');
+  //       loadData();
+  //     }
+  //   } catch (err: any) {
+  //     setErrorMessage(
+  //       err.response?.data?.message || 'Помилка видалення. Перевірте пароль.',
+  //     );
+  //   }
+  // };
 
   // const handleSaveMedicalEntry = async ( //11111111111111
   //   e: React.FormEvent<HTMLFormElement>,
@@ -426,45 +429,89 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   //   }
   // };
 
-  const deleteMedicalRecord = async (index: number) => {
-    if (!viewingMedicalHistory) return;
+  // const deleteMedicalRecord = async (index: number) => {
+  //   if (!viewingMedicalHistory) return;
 
-    const currentPetRecords = medicalRecords.find(
-      (mr) => mr.petId === viewingMedicalHistory.id,
-    );
+  //   const currentPetRecords = medicalRecords.find(
+  //     (mr) => mr.petId === viewingMedicalHistory.id,
+  //   );
 
-    if (!currentPetRecords || !currentPetRecords.records[index]) {
-      alert('Не вдалося знайти дані запису');
-      return;
-    }
+  //   if (!currentPetRecords || !currentPetRecords.records[index]) {
+  //     alert('Не вдалося знайти дані запису');
+  //     return;
+  //   }
 
-    const recordId = currentPetRecords.id;
-    const entryId = currentPetRecords.records[index].id;
+  //   const recordId = currentPetRecords.id;
+  //   const entryId = currentPetRecords.records[index].id;
 
-    if (!window.confirm('Ви впевнені, що хочете видалити цей медичний запис?'))
-      return;
+  //   if (!window.confirm('Ви впевнені, що хочете видалити цей медичний запис?'))
+  //     return;
 
+  //   try {
+  //     // 1. Видаляємо конкретний запис
+  //     await api.delete(`/medical-records/${recordId}/entries/${entryId}`);
+
+  //     // 2. Перевіряємо, чи був це останній запис у масиві
+  //     // (використовуємо локальний стейт currentPetRecords для швидкості)
+  //     if (currentPetRecords.records.length === 1) {
+  //       try {
+  //         // Якщо запис був один — видаляємо всю карту
+  //         await api.delete(`/medical-records/${recordId}`);
+  //         console.log('Медкарту видалено, бо вона порожня');
+  //       } catch (e) {
+  //         console.error('Помилка видалення порожньої карти:', e);
+  //       }
+  //     }
+
+  //     setRecordToDelete(null);
+  //     await loadData(); // Оновлюємо дані, щоб "Записів не знайдено" з'явилося саме по собі
+  //   } catch (err: any) {
+  //     console.error('Помилка видалення:', err.response?.data || err.message);
+  //   }
+  // };
+
+  const handleConfirmDelete = async (password: string) => {
     try {
-      // 1. Видаляємо конкретний запис
-      await api.delete(`/medical-records/${recordId}/entries/${entryId}`);
+      // ЛОГІКА ДЛЯ ВИДАЛЕННЯ МЕДИЧНОГО ЗАПИСУ
+      if (entryToDeleteIndex !== null && viewingMedicalHistory) {
+        const currentPetRecords = medicalRecords.find(
+          (mr) => mr.petId === viewingMedicalHistory.id,
+        );
 
-      // 2. Перевіряємо, чи був це останній запис у масиві
-      // (використовуємо локальний стейт currentPetRecords для швидкості)
-      if (currentPetRecords.records.length === 1) {
-        try {
-          // Якщо запис був один — видаляємо всю карту
-          await api.delete(`/medical-records/${recordId}`);
-          console.log('Медкарту видалено, бо вона порожня');
-        } catch (e) {
-          console.error('Помилка видалення порожньої карти:', e);
+        if (currentPetRecords) {
+          const recordId = currentPetRecords.id;
+          const entryId = currentPetRecords.records[entryToDeleteIndex].id;
+
+          // Видаляємо запис (передаємо пароль, якщо бекенд його вимагає)
+          await api.delete(`/medical-records/${recordId}/entries/${entryId}`, {
+            data: { password },
+          });
+
+          // Якщо це був останній запис — видаляємо всю карту
+          if (currentPetRecords.records.length === 1) {
+            await api.delete(`/medical-records/${recordId}`, {
+              data: { password },
+            });
+          }
         }
+        setEntryToDeleteIndex(null);
+      }
+
+      // ЛОГІКА ДЛЯ ВИДАЛЕННЯ ТВАРИНИ (ваша існуюча)
+      else if (deleteConfirmId) {
+        await api.delete(`/pets/${deleteConfirmId}`, {
+          data: { password },
+        });
+        setDeleteConfirmId(null);
       }
 
       setRecordToDelete(null);
-      await loadData(); // Оновлюємо дані, щоб "Записів не знайдено" з'явилося саме по собі
+      setErrorMessage('');
+      await loadData();
     } catch (err: any) {
-      console.error('Помилка видалення:', err.response?.data || err.message);
-      alert('Помилка сервера при видаленні запису');
+      setErrorMessage(
+        err.response?.data?.message || 'Помилка видалення. Перевірте пароль.',
+      );
     }
   };
 
@@ -942,7 +989,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                           Видалити запис?
                         </span>
                         <button
-                          onClick={() => deleteMedicalRecord(i)}
+                          onClick={() => setEntryToDeleteIndex(i)}
                           className="btn"
                           style={{
                             padding: '4px 8px',
@@ -1090,8 +1137,12 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
       )}
 
       <ConfirmDeleteModal
-        isOpen={!!deleteConfirmId}
-        onClose={() => setDeleteConfirmId(null)}
+        isOpen={!!deleteConfirmId || entryToDeleteIndex !== null}
+        onClose={() => {
+          setDeleteConfirmId(null);
+          setEntryToDeleteIndex(null);
+          setErrorMessage('');
+        }}
         onConfirm={handleConfirmDelete}
         userName={currentUser?.name}
         errorMessage={errorMessage}
