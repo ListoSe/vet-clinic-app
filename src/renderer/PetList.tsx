@@ -1,18 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import api from '../api/api';
 
+// --- ІНТЕРФЕЙСИ ---
 interface Owner {
   id: string;
   name: string;
 }
-interface Animal {
-  id: string;
-  name: string;
-  type: string;
-  age: number;
-  ownerId: string;
-}
-
 interface Treatment {
   medicine?: string;
   dose?: string;
@@ -20,6 +14,7 @@ interface Treatment {
   procedure?: string;
 }
 interface MedicalRecordEntry {
+  id?: string;
   date: string;
   vetId?: string;
   diagnosis: string;
@@ -27,15 +22,27 @@ interface MedicalRecordEntry {
   notes?: string;
 }
 interface MedicalRecord {
+  id: string;
   petId: string;
   records: MedicalRecordEntry[];
+}
+interface Animal {
+  id: string;
+  name: string;
+  type: string;
+  age: number;
+  ownerId: string;
+  medicalRecords?: {
+    id: string;
+    petId: string;
+    records: MedicalRecordEntry[];
+  };
 }
 
 interface AnimalListProps {
   currentUser?: {
     id?: string;
     name: string;
-    password?: string;
     roles: string[];
   };
 }
@@ -52,64 +59,54 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   const isAdmin = currentUser?.roles?.includes('ADMIN');
   const isVet = currentUser?.roles?.includes('VET');
 
-  const [owners] = useState<Owner[]>([
-    { id: '1', name: 'Петро Петренко' },
-    { id: '2', name: 'Олена Іванова' },
-  ]);
+  // Данні з серверу
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
 
-  const [animals, setAnimals] = useState<Animal[]>([
-    {
-      id: '69358759b020d08204570be7',
-      name: 'Софискус',
-      type: 'Кіт',
-      age: 3,
-      ownerId: '1',
-    },
-    { id: '2', name: 'Бобик', type: 'Собака', age: 5, ownerId: '2' },
-  ]);
-
-  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([
-    {
-      petId: '69358759b020d08204570be7',
-      records: [
-        {
-          date: '2025-12-07T10:00:00Z',
-          vetId: '693584f4b020d08204570bd8',
-          diagnosis: 'Гострий риніт',
-          treatments: [
-            { medicine: 'Антибіотик', dose: '2 мл', duration: '5 днів' },
-            { procedure: 'Промивання носа' },
-          ],
-          notes: 'Тварина в хорошому стані',
-        },
-      ],
-    },
-  ]);
-
+  // Стан інтерфейсу
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
   const [viewingMedicalHistory, setViewingMedicalHistory] =
     useState<Animal | null>(null);
-
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [editingRecordIndex, setEditingRecordIndex] = useState<number | null>(
     null,
   );
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
-
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Стан форми
   const [selectedType, setSelectedType] = useState('');
   const [isCustomType, setIsCustomType] = useState(false);
-
-  // --- СТАН ДЛЯ ДИНАМІЧНИХ ПОЛІВ (З DURATION) ---
   const [dynamicTreatments, setDynamicTreatments] = useState<Treatment[]>([
     { medicine: '', dose: '', duration: '' },
   ]);
 
+  // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
+  const loadData = useCallback(async () => {
+    try {
+      const [petsRes, ownersRes, recordsRes] = await Promise.all([
+        api.get('/pets'),
+        api.get('/owners'),
+        api.get('/medical-records'),
+      ]);
+      setAnimals(petsRes.data);
+      setOwners(ownersRes.data); // ??? не так как в OwnersList
+      setMedicalRecords(recordsRes.data);
+    } catch (err) {
+      console.error('Помилка завантаження:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Ефекти для форми
   useEffect(() => {
     if (editingRecordIndex !== null && viewingMedicalHistory) {
       const recs = medicalRecords.find(
@@ -135,6 +132,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
     }
   }, [editingAnimal, isFormOpen]);
 
+  // --- ХЕНДЛЕРИ ПОЛІВ ЛІКУВАННЯ ---
   const addTreatmentField = () =>
     setDynamicTreatments([
       ...dynamicTreatments,
@@ -157,19 +155,225 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
     }
   };
 
-  // --- ХЕНДЛЕРИ ---
-  const handleConfirmDelete = (password: string) => {
-    const passwordToMatch = currentUser?.password || '1234';
-    if (password === passwordToMatch) {
-      setAnimals(animals.filter((a) => a.id !== deleteConfirmId));
-      setDeleteConfirmId(null);
-      setErrorMessage('');
-    } else {
-      setErrorMessage('Невірний пароль!');
+  // --- API ХЕНДЛЕРИ (ОСНОВНА ЛОГІКА) ---
+  const handleConfirmDelete = async (password: string) => {
+    try {
+      if (deleteConfirmId) {
+        await api.delete(`/pets/${deleteConfirmId}`, {
+          data: { password },
+        });
+        setDeleteConfirmId(null);
+        setErrorMessage('');
+        loadData();
+      }
+    } catch (err: any) {
+      setErrorMessage(
+        err.response?.data?.message || 'Помилка видалення. Перевірте пароль.',
+      );
     }
   };
 
-  const handleSaveAnimal = (e: React.FormEvent<HTMLFormElement>) => {
+  // const handleSaveMedicalEntry = async ( //11111111111111
+  //   e: React.FormEvent<HTMLFormElement>,
+  // ) => {
+  //   e.preventDefault();
+  //   if (!viewingMedicalHistory) return;
+  //   const formData = new FormData(e.currentTarget);
+
+  //   const entry: MedicalRecordEntry = {
+  //     date:
+  //       editingRecordIndex !== null
+  //         ? medicalRecords.find((mr) => mr.petId === viewingMedicalHistory.id)!
+  //             .records[editingRecordIndex].date
+  //         : new Date().toISOString(),
+  //     vetId: currentUser?.id || 'unknown',
+  //     diagnosis: formData.get('diagnosis') as string,
+  //     treatments: dynamicTreatments.filter((t) => t.medicine || t.procedure),
+  //     notes: formData.get('notes') as string,
+  //   };
+
+  //   try {
+  //     // Тут логіка залежить від вашого API: або POST на весь масив, або окремий ендпоінт
+  //     await api.post(`/medical-records`, entry);
+  //     setIsAddingNote(false);
+  //     setEditingRecordIndex(null);
+  //     loadData();
+  //   } catch (err) {
+  //     setErrorMessage('Помилка збереження медичного запису');
+  //   }
+  // };
+
+  // const handleSaveMedicalEntry = async ( //22222222222222
+  //   e: React.FormEvent<HTMLFormElement>,
+  // ) => {
+  //   e.preventDefault();
+  //   if (!viewingMedicalHistory) return;
+
+  //   const formData = new FormData(e.currentTarget);
+
+  //   // Створюємо об'єкт так, як того ОЧІКУЄ твій поточний бекенд (CreateMedicalRecordDto)
+  //   // Твій сервіс на бекенді зараз приймає тільки petId
+  //   const payload = {
+  //     petId: viewingMedicalHistory.id,
+  //     // Якщо ти хочеш зберегти діагноз, поки бекенд не оновлено,
+  //     // ці дані просто будуть ігноруватися сервером або викличуть помилку 500.
+  //     // Тому ми надсилаємо ТІЛЬКИ те, що є в CreateMedicalRecordDto.
+  //   };
+
+  //   try {
+  //     // Відправляємо запит на базовий URL без ID в кінці
+  //     await api.post('/medical-records', payload);
+
+  //     setIsAddingNote(false);
+  //     setEditingRecordIndex(null);
+  //     loadData(); // Після цього нова картка має з'явитися в списку
+  //   } catch (err: any) {
+  //     console.error('Деталі помилки:', err.response?.data);
+  //     setErrorMessage(err.response?.data?.message || 'Помилка збереження');
+  //   }
+  // };
+
+  // const handleSaveMedicalEntry = async (
+  //   e: React.FormEvent<HTMLFormElement>,
+  // ) => {
+  //   e.preventDefault();
+  //   if (!viewingMedicalHistory) return;
+
+  //   const recordId = viewingMedicalHistory.medicalRecords?.id;
+  //   if (!recordId) {
+  //     setErrorMessage('Медична карта не знайдена');
+  //     return;
+  //   }
+
+  //   const formData = new FormData(e.currentTarget);
+
+  //   // Безпечно отримуємо масив записів
+  //   const records = viewingMedicalHistory.medicalRecords?.records || [];
+
+  //   // Формуємо об'єкт запису
+  //   const entryPayload = {
+  //     // Якщо ми в режимі редагування І такий запис існує — беремо його дату, інакше — поточну
+  //     date:
+  //       editingRecordIndex !== null && records[editingRecordIndex]
+  //         ? records[editingRecordIndex].date
+  //         : new Date().toISOString(),
+
+  //     diagnosis: formData.get('diagnosis') as string,
+  //     notes: (formData.get('notes') as string) || undefined,
+  //     treatments: dynamicTreatments
+  //       .filter((t) => t.medicine || t.procedure)
+  //       .map((t) => ({
+  //         type: t.procedure ? 'PROCEDURE' : 'MEDICINE',
+  //         medicine: t.medicine || undefined,
+  //         dose: t.dose || undefined,
+  //         duration: t.duration || undefined,
+  //         procedure: t.procedure || undefined,
+  //       })),
+  //   };
+
+  //   try {
+  //     // Перевіряємо, чи ми ДІЙСНО редагуємо існуючий запис
+  //     if (editingRecordIndex !== null && records[editingRecordIndex]) {
+  //       const entryId = records[editingRecordIndex].id;
+  //       if (!entryId) throw new Error('ID запису відсутній');
+
+  //       await api.patch(
+  //         `/medical-records/${recordId}/entries/${entryId}`,
+  //         entryPayload,
+  //       );
+  //     } else {
+  //       // Режим створення нового запису
+  //       await api.post(`/medical-records/${recordId}/entries`, entryPayload);
+  //     }
+
+  //     setIsAddingNote(false);
+  //     setEditingRecordIndex(null);
+  //     setErrorMessage('');
+  //     await loadData();
+  //   } catch (err: any) {
+  //     console.error('Save error:', err.response?.data || err);
+  //     setErrorMessage(err.response?.data?.message || 'Помилка збереження');
+  //   }
+  // };
+
+  const handleSaveMedicalEntry = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ) => {
+    e.preventDefault();
+
+    // 1. Отримуємо форму та дані відразу
+    const form = e.currentTarget;
+    if (!(form instanceof HTMLFormElement)) {
+      console.error('Target is not a form element');
+      return;
+    }
+
+    const formData = new FormData(form); // Оголошуємо ОДИН раз
+
+    if (!viewingMedicalHistory) return;
+
+    try {
+      // 2. Пошук існуючої карти або створення нової
+      const currentRecordObj = medicalRecords.find(
+        (mr) => mr.petId === viewingMedicalHistory.id,
+      );
+      let recordId = currentRecordObj?.id;
+
+      if (!recordId) {
+        try {
+          const newRecordRes = await api.post('/medical-records', {
+            petId: viewingMedicalHistory.id,
+          });
+          recordId = newRecordRes.data.id;
+        } catch (err) {
+          setErrorMessage('Не вдалося створити медичну карту для тварини');
+          return;
+        }
+      }
+
+      // 3. Підготовка даних запису
+      const records = currentRecordObj?.records || [];
+      const entryPayload = {
+        date:
+          editingRecordIndex !== null && records[editingRecordIndex]
+            ? records[editingRecordIndex].date
+            : new Date().toISOString(),
+        diagnosis: formData.get('diagnosis') as string,
+        notes: (formData.get('notes') as string) || undefined,
+        treatments: dynamicTreatments
+          .filter((t) => t.medicine || t.procedure)
+          .map((t) => ({
+            type: t.procedure ? 'PROCEDURE' : 'MEDICINE',
+            medicine: t.medicine || undefined,
+            dose: t.dose || undefined,
+            duration: t.duration || undefined,
+            procedure: t.procedure || undefined,
+          })),
+      };
+
+      // 4. Відправка запиту (PATCH або POST)
+      if (editingRecordIndex !== null && records[editingRecordIndex]) {
+        const entryId = records[editingRecordIndex].id;
+        await api.patch(
+          `/medical-records/${recordId}/entries/${entryId}`,
+          entryPayload,
+        );
+      } else {
+        await api.post(`/medical-records/${recordId}/entries`, entryPayload);
+      }
+
+      // 5. Оновлення стану після успіху
+      setIsAddingNote(false);
+      setEditingRecordIndex(null);
+      setErrorMessage('');
+      await loadData();
+    } catch (err: any) {
+      console.error('Save error:', err.response?.data || err);
+      setErrorMessage(err.response?.data?.message || 'Помилка збереження');
+    }
+  };
+
+  const handleSaveAnimal = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!isAdmin) return;
 
@@ -185,8 +389,6 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
       setErrorMessage(
         'Будь ласка, вкажіть коректний вид тварини (наприклад, Кіт або Собака)',
       );
-      // Якщо ви використовуєте браузерний alert, розкоментуйте наступний рядок:
-      // alert('Будь ласка, вкажіть коректний вид тварини');
       return;
     }
 
@@ -197,77 +399,73 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
       ownerId: formData.get('ownerId') as string,
     };
 
-    // Додаткова перевірка імені (щоб не було порожнім)
-    if (!animalData.name) {
-      setErrorMessage('Кличка тварини обов’язкова');
+    try {
+      if (editingAnimal) {
+        await api.patch(`/pets/${editingAnimal.id}`, animalData);
+      } else {
+        await api.post('/pets', animalData);
+      }
+      setErrorMessage('');
+      setIsFormOpen(false);
+      loadData();
+    } catch (err: any) {
+      setErrorMessage(
+        err.response?.data?.message || 'Помилка збереження даних тварини',
+      );
+    }
+  };
+
+  // const deleteMedicalRecord = async (index: number) => {
+  //   if (!viewingMedicalHistory) return;
+  //   try {
+  //     await api.delete(`/medical-records/${viewingMedicalHistory.id}/${index}`);
+  //     setRecordToDelete(null);
+  //     loadData();
+  //   } catch (err) {
+  //     alert('Помилка видалення запису');
+  //   }
+  // };
+
+  const deleteMedicalRecord = async (index: number) => {
+    if (!viewingMedicalHistory) return;
+
+    const currentPetRecords = medicalRecords.find(
+      (mr) => mr.petId === viewingMedicalHistory.id,
+    );
+
+    if (!currentPetRecords || !currentPetRecords.records[index]) {
+      alert('Не вдалося знайти дані запису');
       return;
     }
 
-    if (editingAnimal) {
-      setAnimals(
-        animals.map((a) =>
-          a.id === editingAnimal.id ? { ...editingAnimal, ...animalData } : a,
-        ),
-      );
-    } else {
-      setAnimals([...animals, { ...animalData, id: Date.now().toString() }]);
-    }
+    const recordId = currentPetRecords.id;
+    const entryId = currentPetRecords.records[index].id;
 
-    // Очищуємо помилки та закриваємо форму
-    setErrorMessage('');
-    setIsFormOpen(false);
-    // Скидаємо стани вибору типу (якщо ви додавали їх раніше)
-    // setSelectedType('');
-    // setIsCustomType(false);
-  };
+    if (!window.confirm('Ви впевнені, що хочете видалити цей медичний запис?'))
+      return;
 
-  const handleSaveMedicalEntry = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!viewingMedicalHistory) return;
-    const formData = new FormData(e.currentTarget);
+    try {
+      // 1. Видаляємо конкретний запис
+      await api.delete(`/medical-records/${recordId}/entries/${entryId}`);
 
-    const entry: MedicalRecordEntry = {
-      date:
-        editingRecordIndex !== null
-          ? medicalRecords.find((mr) => mr.petId === viewingMedicalHistory.id)!
-              .records[editingRecordIndex].date
-          : new Date().toISOString(),
-      vetId: currentUser?.id || 'unknown',
-      diagnosis: formData.get('diagnosis') as string,
-      treatments: dynamicTreatments.filter((t) => t.medicine || t.procedure),
-      notes: formData.get('notes') as string,
-    };
-
-    setMedicalRecords((prev) => {
-      const petRecord = prev.find(
-        (mr) => mr.petId === viewingMedicalHistory.id,
-      );
-      if (petRecord) {
-        const newRecords = [...petRecord.records];
-        if (editingRecordIndex !== null) newRecords[editingRecordIndex] = entry;
-        else newRecords.unshift(entry);
-        return prev.map((mr) =>
-          mr.petId === viewingMedicalHistory.id
-            ? { ...mr, records: newRecords }
-            : mr,
-        );
+      // 2. Перевіряємо, чи був це останній запис у масиві
+      // (використовуємо локальний стейт currentPetRecords для швидкості)
+      if (currentPetRecords.records.length === 1) {
+        try {
+          // Якщо запис був один — видаляємо всю карту
+          await api.delete(`/medical-records/${recordId}`);
+          console.log('Медкарту видалено, бо вона порожня');
+        } catch (e) {
+          console.error('Помилка видалення порожньої карти:', e);
+        }
       }
-      return [...prev, { petId: viewingMedicalHistory.id, records: [entry] }];
-    });
-    setIsAddingNote(false);
-    setEditingRecordIndex(null);
-  };
 
-  const deleteMedicalRecord = (index: number) => {
-    if (!viewingMedicalHistory) return;
-    setMedicalRecords((prev) =>
-      prev.map((mr) =>
-        mr.petId === viewingMedicalHistory.id
-          ? { ...mr, records: mr.records.filter((_, idx) => idx !== index) }
-          : mr,
-      ),
-    );
-    setRecordToDelete(null);
+      setRecordToDelete(null);
+      await loadData(); // Оновлюємо дані, щоб "Записів не знайдено" з'явилося саме по собі
+    } catch (err: any) {
+      console.error('Помилка видалення:', err.response?.data || err.message);
+      alert('Помилка сервера при видаленні запису');
+    }
   };
 
   const filteredAnimals = animals

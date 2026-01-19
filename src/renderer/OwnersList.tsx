@@ -5,7 +5,7 @@ import api from '../api/api';
 interface Pet {
   id: string;
   name: string;
-  species: string; // собака, кіт і т.д.
+  type: string; // собака, кіт і т.д.
 }
 
 interface Owner {
@@ -13,7 +13,7 @@ interface Owner {
   name: string;
   phone: string;
   email?: string;
-  pets: Pet[]; // Масив тварин власника
+  petModels: Pet[]; // Масив тварин власника
 }
 
 interface OwnersListProps {
@@ -69,7 +69,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
     .filter(
       (o) =>
         (o.name || '').toLowerCase().includes(search.toLowerCase()) ||
-        o.pets?.some((p) =>
+        o.petModels?.some((p) =>
           p.name.toLowerCase().includes(search.toLowerCase()),
         ), // Пошук також по кличці тварини
     )
@@ -172,11 +172,11 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                 <div style={{ fontWeight: '600' }}>👤 {o.name}</div>
               </td>
               <td>
-                {o.pets && o.pets.length > 0 ? (
+                {o.petModels && o.petModels.length > 0 ? (
                   <div
                     style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
                   >
-                    {o.pets.map((pet, idx) => (
+                    {o.petModels.map((pet, idx) => (
                       <span
                         key={idx}
                         style={{
@@ -188,7 +188,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                           border: '1px solid #dbeafe',
                         }}
                       >
-                        {emojiMap[pet.species] || '🐾'} {pet.name}
+                        {emojiMap[pet.type.toLowerCase()] || '🐾'} {pet.name}
                       </span>
                     ))}
                   </div>
@@ -262,7 +262,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                 readOnly={!isAdmin}
               />
 
-              {editingOwner?.pets && editingOwner.pets.length > 0 && (
+              {editingOwner?.petModels && editingOwner.petModels.length > 0 && (
                 <div style={{ marginBottom: '15px' }}>
                   <label className="input-label">Тварини власника</label>
                   <div
@@ -273,13 +273,13 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
                       border: '1px solid #e2e8f0',
                     }}
                   >
-                    {editingOwner.pets.map((p, i) => (
+                    {editingOwner.petModels.map((p, i) => (
                       <div
                         key={i}
                         style={{ fontSize: '14px', marginBottom: '4px' }}
                       >
-                        {emojiMap[p.species] || '🐾'} <strong>{p.name}</strong>{' '}
-                        ({p.species})
+                        {emojiMap[p.type.toLowerCase()] || '🐾'}{' '}
+                        <strong>{p.name}</strong> ({p.type})
                       </div>
                     ))}
                   </div>
