@@ -23,7 +23,6 @@ export default function VetList({ currentUser }: VetListProps) {
   const SERVER_URL = 'http://localhost:3000';
   // --- СТАН ДАНИХ (тепер з сервера) ---
   const [vets, setVets] = useState<Vet[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // --- СТАНИ ІНТЕРФЕЙСУ ---
   const [search, setSearch] = useState('');
@@ -41,15 +40,12 @@ export default function VetList({ currentUser }: VetListProps) {
   // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await api.get<Vet[]>('/users');
       // Фільтруємо тільки ветеринарів
       const data = Array.isArray(res.data) ? res.data : [];
       setVets(data.filter((u) => u.roles?.includes('VET')));
     } catch (e) {
       console.error('Помилка завантаження:', e);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -160,12 +156,10 @@ export default function VetList({ currentUser }: VetListProps) {
   const filteredVets = vets
     .filter((v) => (v.name || '').toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      const nameA = a.name || '';
-      const nameB = b.name || '';
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
       return nameA < nameB ? (sortAsc ? -1 : 1) : sortAsc ? 1 : -1;
     });
-
-  if (loading) return <div style={{ padding: '20px' }}>Завантаження...</div>;
 
   return (
     <div className="list-container" style={{ width: '100%' }}>

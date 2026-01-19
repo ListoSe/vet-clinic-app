@@ -516,8 +516,16 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   };
 
   const filteredAnimals = animals
-    .filter((a) => a.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => (a.name < b.name ? (sortAsc ? -1 : 1) : sortAsc ? 1 : -1));
+    .filter((a) => (a.name || '').toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) =>
+      (a.name || '').toLowerCase() < (b.name || '').toLowerCase()
+        ? sortAsc
+          ? -1
+          : 1
+        : sortAsc
+          ? 1
+          : -1,
+    );
 
   return (
     <div className="list-container">

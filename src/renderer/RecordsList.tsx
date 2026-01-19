@@ -108,7 +108,6 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
   const filteredRecords = records
     .filter((r) => {
       if (!isAdmin && isVet) {
-        // Припускаємо, що у currentUser є id (наприклад, з токена)
         if (r.userId !== (currentUser as any)?.id) return false;
       }
       const matchesSearch =
