@@ -107,6 +107,10 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
 
   const filteredRecords = records
     .filter((r) => {
+      if (!isAdmin && isVet) {
+        // Припускаємо, що у currentUser є id (наприклад, з токена)
+        if (r.userId !== (currentUser as any)?.id) return false;
+      }
       const matchesSearch =
         (r.pet?.name || '').toLowerCase().includes(search.toLowerCase()) ||
         (r.user?.name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -260,6 +264,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                     required
                     value={selectedOwnerId}
                     onChange={(e) => setSelectedOwnerId(e.target.value)}
+                    disabled={isVet && !!selectedRecord}
                   >
                     <option value="">Оберіть власника</option>
                     {owners.map((o) => (
@@ -329,6 +334,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                 className="input-field"
                 required
                 defaultValue={selectedRecord?.userId}
+                disabled={isVet && !!selectedRecord}
               >
                 <option value="">Оберіть лікаря</option>
                 {vets.map((v) => (
