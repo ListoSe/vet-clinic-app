@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import api from '../api/api';
 
 interface FinanceRecord {
   id: number;
@@ -15,32 +16,7 @@ interface FinanceListProps {
 }
 
 export default function FinanceList({ currentUser }: FinanceListProps) {
-  const [finances, setFinances] = useState<FinanceRecord[]>([
-    {
-      id: 1,
-      date: '2024-05-19',
-      clientName: 'Ганна Сидорова',
-      service: 'Огляд та вакцинація',
-      amount: 550,
-      status: 'Оплачено',
-    },
-    {
-      id: 2,
-      date: '2024-05-20',
-      clientName: 'Іван Іванов',
-      service: 'Хірургія (стерилізація)',
-      amount: 1200,
-      status: 'Очікує',
-    },
-    {
-      id: 3,
-      date: '2024-05-21',
-      clientName: 'Дмитро Козак',
-      service: 'Чистка зубів',
-      amount: 400,
-      status: 'Борг',
-    },
-  ]);
+  const [finances, setFinances] = useState<FinanceRecord[]>([]);
 
   const [search, setSearch] = useState('');
   const [filterDate, setFilterDate] = useState('');
@@ -51,13 +27,39 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const loadData = useCallback(async () => {
+    try {
+      const response = await api.get('/appointments');
+
+      // Логіка трансформації даних
+      const mappedData: FinanceRecord[] = response.data.map((app: any) => ({
+        id: app.id,
+        date: new Date(app.visitDate).toISOString().split('T')[0],
+        clientName: app.pet?.owner?.name || 'Невідомий клієнт',
+        service: app.reason,
+        amount: app.amount || 0,
+        status: app.paymentStatus || 'PENDING',
+      }));
+
+      setFinances(mappedData);
+    } catch (err) {
+      console.error('Помилка завантаження фінансів:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   // Логіка фільтрації та сортування
   const filteredFinances = finances
     .filter((f) => {
       const matchesSearch =
         f.clientName.toLowerCase().includes(search.toLowerCase()) ||
         f.service.toLowerCase().includes(search.toLowerCase());
-      const matchesDate = filterDate ? f.date === filterDate : true;
+      const matchesDate = filterDate
+        ? f.date.split('T')[0] === filterDate
+        : true;
       return matchesSearch && matchesDate;
     })
     .sort((a, b) => {
@@ -74,45 +76,53 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'Оплачено':
+      case 'PAID':
         return { bg: '#dcfce7', text: '#166534' };
-      case 'Очікує':
+      case 'PENDING':
         return { bg: '#fef3c7', text: '#92400e' };
-      case 'Борг':
+      case 'DEBT':
         return { bg: '#fee2e2', text: '#991b1b' };
       default:
         return { bg: '#eee', text: '#333' };
     }
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!selectedFinance) return;
+
     const formData = new FormData(e.currentTarget);
-    const updatedData = {
+    const updateData = {
       amount: Number(formData.get('amount')),
-      status: formData.get('status') as FinanceRecord['status'],
-      date: formData.get('date') as string,
+      paymentStatus: formData.get('status'),
+      visitDate: new Date(formData.get('date') as string).toISOString(),
     };
 
-    if (selectedFinance) {
-      setFinances(
-        finances.map((f) =>
-          f.id === selectedFinance.id ? { ...f, ...updatedData } : f,
-        ),
-      );
+    try {
+      await api.patch(`/appointments/${selectedFinance.id}`, updateData);
+      setSelectedFinance(null);
+      loadData(); // Оновлюємо список
+    } catch (err) {
+      alert('Помилка при оновленні даних');
     }
-    setSelectedFinance(null);
   };
 
-  const handleConfirmDelete = (password: string) => {
-    const correctPassword = currentUser?.password || '1234';
-    if (password === correctPassword) {
-      setFinances(finances.filter((f) => f.id !== selectedFinance?.id));
-      setIsDeleteModalOpen(false);
-      setSelectedFinance(null);
-      setErrorMessage('');
-    } else {
-      setErrorMessage('Невірний пароль!');
+  const handleConfirmDelete = async (password: string) => {
+    try {
+      if (selectedFinance?.id) {
+        await api.delete(`/appointments/${selectedFinance.id}`, {
+          data: { password },
+        });
+        setIsDeleteModalOpen(false);
+        setSelectedFinance(null);
+        setErrorMessage('');
+
+        loadData();
+      }
+    } catch (err: any) {
+      setErrorMessage(
+        err.response?.data?.message || 'Помилка видалення. Перевірте пароль.',
+      );
     }
   };
 
@@ -185,7 +195,7 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
                 className="clickable-row"
                 onClick={() => setSelectedFinance(f)}
               >
-                <td>{f.date}</td>
+                <td>{f.date ? new Date(f.date).toLocaleDateString() : '—'}</td>
                 <td style={{ fontWeight: '600' }}>👤 {f.clientName}</td>
                 <td>{f.service}</td>
                 <td style={{ fontWeight: 'bold' }}>{f.amount} грн</td>

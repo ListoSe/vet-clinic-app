@@ -26,7 +26,6 @@ interface OwnersListProps {
 export default function OwnersList({ currentUser }: OwnersListProps) {
   // --- СТАН ДАНИХ ---
   const [owners, setOwners] = useState<Owner[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // --- СТАНИ ІНТЕРФЕЙСУ ---
   const [search, setSearch] = useState('');
@@ -51,13 +50,10 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
   // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await api.get<Owner[]>('/owners');
       setOwners(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Помилка завантаження власників:', e);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -114,8 +110,6 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
       );
     }
   };
-
-  if (loading) return <div style={{ padding: '20px' }}>Завантаження...</div>;
 
   return (
     <div className="list-container">
