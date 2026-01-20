@@ -40,7 +40,6 @@ export default function Login({ setUser }: { setUser: any }) {
         }
       }
     } catch (err: any) {
-      console.error('Login error:', err);
       setError(err.response?.data?.message || 'Невірний логін або пароль');
     }
   };

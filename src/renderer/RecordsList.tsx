@@ -46,8 +46,10 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorLoadMessage, setErrorLoadMessage] = useState('');
 
   const loadData = useCallback(async () => {
+    setErrorLoadMessage('');
     try {
       const [recsRes, ownersRes, usersRes] = await Promise.all([
         api.get('/appointments'),
@@ -58,8 +60,8 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
       setRecords(recsRes.data);
       setOwners(ownersRes.data);
       setVets(usersRes.data.filter((u: any) => u.roles.includes('VET')));
-    } catch (err) {
-      console.error('Помилка завантаження списків:', err);
+    } catch {
+      setErrorLoadMessage('Помилка завантаження');
     }
   }, []);
 
@@ -79,7 +81,10 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
       api
         .get(`/pets?ownerId=${selectedOwnerId}`)
         .then((res) => setAvailablePets(res.data))
-        .catch((err) => console.error('Помилка завантаження тварин:', err));
+        .catch(() => {
+          setErrorMessage('Помилка завантаження тварин:');
+          setAvailablePets([]);
+        });
     } else {
       setAvailablePets([]);
     }
@@ -127,6 +132,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setErrorMessage('');
     const formData = new FormData(e.currentTarget);
     const appointmentData = {
       status: formData.get('status') || 'NEW',
@@ -147,8 +153,8 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
       setIsAdding(false);
       setSelectedRecord(null);
       loadData();
-    } catch (err) {
-      alert('Помилка при збереженні');
+    } catch {
+      setErrorMessage('Помилка при збереженні');
     }
   };
 
@@ -197,6 +203,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
         </button>
         <button
           onClick={() => {
+            setErrorMessage('');
             setSelectedOwnerId('');
             setIsAdding(true);
             setSelectedRecord(null);
@@ -218,11 +225,21 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
           </tr>
         </thead>
         <tbody>
+          {errorLoadMessage && (
+            <tr>
+              <td colSpan={4}>
+                <div className="error-banner">{errorLoadMessage}</div>
+              </td>
+            </tr>
+          )}
           {filteredRecords.map((r) => (
             <tr
               key={r.id}
               className="clickable-row"
-              onClick={() => setSelectedRecord(r)}
+              onClick={() => {
+                setErrorMessage('');
+                setSelectedRecord(r);
+              }}
             >
               <td>
                 {r.visitDate ? new Date(r.visitDate).toLocaleDateString() : '—'}
@@ -245,6 +262,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
           onClick={() => {
             setIsAdding(false);
             setSelectedRecord(null);
+            setErrorMessage('');
           }}
         >
           <div
@@ -365,7 +383,9 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                 className="input-field"
                 style={{ height: '80px', resize: 'none' }}
               />
-
+              {errorMessage && (
+                <div className="error-banner">{errorMessage}</div>
+              )}
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button
                   type="submit"
@@ -379,6 +399,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                   onClick={() => {
                     setIsAdding(false);
                     setSelectedRecord(null);
+                    setErrorMessage('');
                   }}
                   className="btn btn-secondary"
                   style={{ flex: 1 }}
@@ -391,7 +412,10 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
               {selectedRecord && isAdmin && (
                 <button
                   type="button"
-                  onClick={() => setIsDeleteModalOpen(true)}
+                  onClick={() => {
+                    setErrorMessage('');
+                    setIsDeleteModalOpen(true);
+                  }}
                   className="btn"
                   style={{
                     background: 'none',

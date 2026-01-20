@@ -34,17 +34,19 @@ export default function VetList({ currentUser }: VetListProps) {
   // --- СТАНИ ВИДАЛЕННЯ ---
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorLoadMessage, setErrorLoadMessage] = useState('');
 
   const isAdmin = currentUser?.roles?.includes('ADMIN');
 
   // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
   const loadData = useCallback(async () => {
+    setErrorLoadMessage('');
     try {
       const res = await api.get<Vet[]>('/users');
       const data = Array.isArray(res.data) ? res.data : [];
       setVets(data.filter((u) => u.roles?.includes('VET')));
-    } catch (e) {
-      console.error('Помилка завантаження:', e);
+    } catch {
+      setErrorLoadMessage('Помилка завантаження');
     }
   }, []);
 
@@ -73,7 +75,7 @@ export default function VetList({ currentUser }: VetListProps) {
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formElement = e.currentTarget;
-
+    setErrorMessage('');
     const formData = new FormData();
 
     formData.append(
@@ -116,11 +118,12 @@ export default function VetList({ currentUser }: VetListProps) {
       loadData();
     } catch (err: any) {
       if (err.response?.status === 409) {
-        alert('Помилка: Користувач з таким номером телефону вже існує!');
+        setErrorMessage(
+          'Помилка: Користувач з таким номером телефону вже існує!',
+        );
       } else {
-        alert('Помилка при збереженні даних');
+        setErrorMessage('Виникла помилка при збереженні. Перевірте з’єднання.');
       }
-      console.error(err);
     }
   };
 
@@ -172,6 +175,7 @@ export default function VetList({ currentUser }: VetListProps) {
           <button
             onClick={() => {
               setEditingVet(null);
+              setErrorMessage('');
               setIsModalOpen(true);
             }}
             className="btn btn-primary"
@@ -193,6 +197,13 @@ export default function VetList({ currentUser }: VetListProps) {
           </tr>
         </thead>
         <tbody>
+          {errorLoadMessage && (
+            <tr>
+              <td colSpan={4}>
+                <div className="error-banner">{errorLoadMessage}</div>
+              </td>
+            </tr>
+          )}
           {filteredVets.map((v) => (
             <tr
               key={v.id}
@@ -200,6 +211,7 @@ export default function VetList({ currentUser }: VetListProps) {
               onClick={() => {
                 if (isAdmin) {
                   setEditingVet(v);
+                  setErrorMessage('');
                   setIsModalOpen(true);
                 }
               }}
@@ -244,7 +256,13 @@ export default function VetList({ currentUser }: VetListProps) {
 
       {/* Модалка редагування/додавання */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setIsModalOpen(false);
+            setErrorMessage('');
+          }}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <h3 style={{ marginTop: 0 }}>
@@ -333,6 +351,10 @@ export default function VetList({ currentUser }: VetListProps) {
                 className="input-field"
                 style={{ height: '80px', resize: 'none' }}
               />
+
+              {errorMessage && (
+                <div className="error-banner">{errorMessage}</div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button

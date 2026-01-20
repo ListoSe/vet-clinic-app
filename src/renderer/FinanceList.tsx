@@ -31,8 +31,10 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
   );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorLoadMessage, setErrorLoadMessage] = useState('');
 
   const loadData = useCallback(async () => {
+    setErrorLoadMessage('');
     try {
       const response = await api.get('/appointments');
 
@@ -46,8 +48,8 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
       }));
 
       setFinances(mappedData);
-    } catch (err) {
-      console.error('Помилка завантаження фінансів:', err);
+    } catch {
+      setErrorLoadMessage('Помилка завантаження');
     }
   }, []);
 
@@ -98,6 +100,7 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedFinance) return;
+    setErrorMessage('');
 
     const formData = new FormData(e.currentTarget);
     const updateData = {
@@ -110,8 +113,8 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
       await api.patch(`/appointments/${selectedFinance.id}`, updateData);
       setSelectedFinance(null);
       loadData();
-    } catch (err) {
-      alert('Помилка при оновленні даних');
+    } catch {
+      setErrorMessage('Помилка при оновленні даних');
     }
   };
 
@@ -124,7 +127,6 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
         setIsDeleteModalOpen(false);
         setSelectedFinance(null);
         setErrorMessage('');
-
         loadData();
       }
     } catch (err: any) {
@@ -194,12 +196,22 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
           </tr>
         </thead>
         <tbody>
+          {errorLoadMessage && (
+            <tr>
+              <td colSpan={5}>
+                <div className="error-banner">{errorLoadMessage}</div>
+              </td>
+            </tr>
+          )}
           {filteredFinances.map((f) => {
             return (
               <tr
                 key={f.id}
                 className="clickable-row"
-                onClick={() => setSelectedFinance(f)}
+                onClick={() => {
+                  setErrorMessage('');
+                  setSelectedFinance(f);
+                }}
               >
                 <td>{f.date ? new Date(f.date).toLocaleDateString() : '—'}</td>
                 <td style={{ fontWeight: '600' }}>👤 {f.clientName}</td>
@@ -218,7 +230,13 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
 
       {/* МОДАЛКА РЕДАГУВАННЯ */}
       {selectedFinance && (
-        <div className="modal-overlay" onClick={() => setSelectedFinance(null)}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setSelectedFinance(null);
+            setErrorMessage('');
+          }}
+        >
           <div
             className="modal-content"
             style={{ maxWidth: '400px' }}
@@ -265,6 +283,10 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
                 <option value="PENDING">Очікує</option>
                 <option value="DEBT">Борг</option>
               </select>
+
+              {errorMessage && (
+                <div className="error-banner">{errorMessage}</div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button

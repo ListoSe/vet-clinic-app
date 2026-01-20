@@ -36,6 +36,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
   // --- СТАНИ ВИДАЛЕННЯ ---
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorLoadMessage, setErrorLoadMessage] = useState('');
 
   const isAdmin = currentUser?.roles?.includes('ADMIN');
 
@@ -48,11 +49,12 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
   };
 
   const loadData = useCallback(async () => {
+    setErrorLoadMessage('');
     try {
       const res = await api.get<Owner[]>('/owners');
       setOwners(Array.isArray(res.data) ? res.data : []);
-    } catch (e) {
-      console.error('Помилка завантаження власників:', e);
+    } catch {
+      setErrorLoadMessage('Помилка завантаження власників:');
     }
   }, []);
 
@@ -73,6 +75,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
   // --- ОБРОБНИКИ ПОДІЙ ---
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setErrorMessage('');
     const formData = new FormData(e.currentTarget);
     const ownerData = {
       name: formData.get('name') as string,
@@ -89,7 +92,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
       setIsModalOpen(false);
       loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Помилка при збереженні');
+      setErrorMessage(err.response?.data?.message || 'Помилка при збереженні');
     }
   };
 
@@ -131,6 +134,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
           <button
             onClick={() => {
               setEditingOwner(null);
+              setErrorMessage('');
               setIsModalOpen(true);
             }}
             className="btn btn-primary"
@@ -152,12 +156,20 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
           </tr>
         </thead>
         <tbody>
+          {errorLoadMessage && (
+            <tr>
+              <td colSpan={4}>
+                <div className="error-banner">{errorLoadMessage}</div>
+              </td>
+            </tr>
+          )}
           {filteredOwners.map((o) => (
             <tr
               key={o.id}
               className="clickable-row"
               onClick={() => {
                 setEditingOwner(o);
+                setErrorMessage('');
                 setIsModalOpen(true);
               }}
             >
@@ -218,7 +230,13 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
 
       {/* Модалка */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setIsModalOpen(false);
+            setErrorMessage('');
+          }}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
               {!isAdmin

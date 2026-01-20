@@ -81,6 +81,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
     null,
   );
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorLoadMessage, setErrorLoadMessage] = useState('');
 
   // Стан форми
   const [selectedType, setSelectedType] = useState('');
@@ -90,6 +91,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   ]);
 
   const loadData = useCallback(async () => {
+    setErrorLoadMessage('');
     try {
       const [petsRes, ownersRes, recordsRes] = await Promise.all([
         api.get('/pets'),
@@ -99,8 +101,8 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
       setAnimals(petsRes.data);
       setOwners(ownersRes.data); // ??? не так как в OwnersList
       setMedicalRecords(recordsRes.data);
-    } catch (err) {
-      console.error('Помилка завантаження:', err);
+    } catch {
+      setErrorLoadMessage('Помилка завантаження:');
     }
   }, []);
 
@@ -164,7 +166,6 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
     e.preventDefault();
 
     if (!viewingMedicalHistory) return;
-
     const formData = new FormData(e.currentTarget);
     try {
       const currentRecordObj = medicalRecords.find(
@@ -218,7 +219,6 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
       setErrorMessage('');
       await loadData();
     } catch (err: any) {
-      console.error('Save error:', err.response?.data || err);
       setErrorMessage(err.response?.data?.message || 'Помилка збереження');
     }
   };
@@ -337,6 +337,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
           <button
             onClick={() => {
               setEditingAnimal(null);
+              setErrorMessage('');
               setIsFormOpen(true);
             }}
             className="btn btn-primary"
@@ -359,12 +360,20 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
           </tr>
         </thead>
         <tbody>
+          {errorLoadMessage && (
+            <tr>
+              <td colSpan={4}>
+                <div className="error-banner">{errorLoadMessage}</div>
+              </td>
+            </tr>
+          )}
           {filteredAnimals.map((a) => (
             <tr
               key={a.id}
               className="clickable-row"
               onClick={() => {
                 setEditingAnimal(a);
+                setErrorMessage('');
                 setIsFormOpen(true);
               }}
             >
@@ -391,6 +400,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      setErrorMessage('');
                       setDeleteConfirmId(a.id);
                     }}
                     className="btn"
@@ -412,7 +422,13 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
 
       {/* МОДАЛКА ПРОФІЛЮ */}
       {isFormOpen && (
-        <div className="modal-overlay" onClick={() => setIsFormOpen(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setIsFormOpen(false);
+            setErrorMessage('');
+          }}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
               {!isAdmin
@@ -522,6 +538,9 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                   </option>
                 ))}
               </select>
+              {errorMessage && (
+                <div className="error-banner">{errorMessage}</div>
+              )}
               <div style={{ display: 'flex', gap: '10px' }}>
                 {isAdmin && (
                   <button
@@ -545,6 +564,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
             {editingAnimal && (
               <button
                 onClick={() => {
+                  setErrorMessage('');
                   setIsFormOpen(false);
                   setViewingMedicalHistory(editingAnimal);
                 }}
@@ -570,6 +590,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
           onClick={() => {
             setViewingMedicalHistory(null);
             setIsAddingNote(false);
+            setErrorMessage('');
             setEditingRecordIndex(null);
             setRecordToDelete(null);
           }}
@@ -592,7 +613,10 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
               </h3>
               {isVet && !isAddingNote && (
                 <button
-                  onClick={() => setIsAddingNote(true)}
+                  onClick={() => {
+                    setErrorMessage('');
+                    setIsAddingNote(true);
+                  }}
                   className="btn btn-primary"
                 >
                   + Додати запис
@@ -784,7 +808,10 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                           Видалити запис?
                         </span>
                         <button
-                          onClick={() => setEntryToDeleteIndex(i)}
+                          onClick={() => {
+                            setErrorMessage('');
+                            setEntryToDeleteIndex(i);
+                          }}
                           className="btn"
                           style={{
                             padding: '4px 8px',
@@ -816,6 +843,7 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                         >
                           <button
                             onClick={() => {
+                              setErrorMessage('');
                               setEditingRecordIndex(i);
                               setIsAddingNote(true);
                             }}
@@ -828,7 +856,10 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
                             ✏️
                           </button>
                           <button
-                            onClick={() => setRecordToDelete(i)}
+                            onClick={() => {
+                              setErrorMessage('');
+                              setRecordToDelete(i);
+                            }}
                             style={{
                               background: 'none',
                               border: 'none',
