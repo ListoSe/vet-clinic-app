@@ -30,7 +30,7 @@ export default function Login({ setUser }: { setUser: any }) {
 
       if (user && accessToken) {
         localStorage.setItem('accessToken', accessToken);
-
+        localStorage.setItem('temp_pc', password); // Переробити на запрос до бекенду пізніше
         setUser(user);
 
         if (user.roles.includes('ADMIN')) {

@@ -22,7 +22,7 @@ interface RecordsListProps {
   };
 }
 const STATUS_LABELS: { [key: string]: string } = {
-  NEW: 'Новий',
+  NEW: 'Заплановано',
   COMPLETED: 'Завершено',
   CANCELLED: 'Скасовано',
 };
@@ -37,6 +37,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
   const [vets, setVets] = useState<any[]>([]);
   const [availablePets, setAvailablePets] = useState<any[]>([]);
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
+  const [selectedPetId, setSelectedPetId] = useState<string>('');
 
   const [search, setSearch] = useState('');
   const [filterDate, setFilterDate] = useState('');
@@ -70,9 +71,13 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
   }, [loadData]);
 
   useEffect(() => {
-    if (selectedRecord && selectedRecord.pet) {
-      const { ownerId } = selectedRecord.pet as any;
+    if (selectedRecord) {
+      const { ownerId } = (selectedRecord.pet as any) || {};
       if (ownerId) setSelectedOwnerId(ownerId);
+      setSelectedPetId(selectedRecord.petId || '');
+    } else {
+      setSelectedOwnerId('');
+      setSelectedPetId('');
     }
   }, [selectedRecord]);
 
@@ -159,11 +164,15 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
   };
 
   const handleConfirmDelete = async (password: string) => {
+    setErrorMessage('');
+    const savedPassword = localStorage.getItem('temp_pc');
+    if (!savedPassword || password !== savedPassword) {
+      setErrorMessage('Невірний пароль користувача! Спробуйте ще раз.');
+      return;
+    }
     try {
       if (selectedRecord?.id) {
-        await api.delete(`/appointments/${selectedRecord.id}`, {
-          data: { password },
-        });
+        await api.delete(`/appointments/${selectedRecord.id}`);
         setIsDeleteModalOpen(false);
         setSelectedRecord(null);
         setErrorMessage('');
@@ -205,6 +214,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
           onClick={() => {
             setErrorMessage('');
             setSelectedOwnerId('');
+            setSelectedPetId('');
             setIsAdding(true);
             setSelectedRecord(null);
           }}
@@ -239,6 +249,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
               onClick={() => {
                 setErrorMessage('');
                 setSelectedRecord(r);
+                setSelectedPetId(r.petId || '');
               }}
             >
               <td>
@@ -262,6 +273,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
           onClick={() => {
             setIsAdding(false);
             setSelectedRecord(null);
+            setSelectedPetId('');
             setErrorMessage('');
           }}
         >
@@ -300,7 +312,8 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                     className="input-field"
                     required
                     disabled={!selectedOwnerId}
-                    defaultValue={selectedRecord?.petId}
+                    value={selectedPetId}
+                    onChange={(e) => setSelectedPetId(e.target.value)}
                   >
                     <option value="">
                       {selectedOwnerId
@@ -325,14 +338,16 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                   <label className="input-label">Дата</label>
                   <input
                     name="visitDate"
-                    type="date"
+                    type="datetime-local"
                     defaultValue={
                       selectedRecord?.visitDate
-                        ? selectedRecord.visitDate.split('T')[0]
+                        ? selectedRecord.visitDate.slice(0, 16)
                         : ''
                     }
                     className="input-field"
                     required
+                    min={`${new Date().toISOString().split('T')[0]}T00:00`}
+                    step="1800"
                     readOnly={isVet && !!selectedRecord}
                   />
                 </div>
@@ -383,7 +398,7 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                 className="input-field"
                 style={{ height: '80px', resize: 'none' }}
               />
-              {errorMessage && (
+              {errorMessage && !isDeleteModalOpen && (
                 <div className="error-banner">{errorMessage}</div>
               )}
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>

@@ -262,6 +262,12 @@ export default function AnimalList({ currentUser }: AnimalListProps) {
   };
 
   const handleConfirmDelete = async (password: string) => {
+    setErrorMessage('');
+    const savedPassword = localStorage.getItem('temp_pc');
+    if (!savedPassword || password !== savedPassword) {
+      setErrorMessage('Невірний пароль користувача! Спробуйте ще раз.');
+      return;
+    }
     try {
       // ЛОГІКА ДЛЯ ВИДАЛЕННЯ МЕДИЧНОГО ЗАПИСУ
       if (entryToDeleteIndex !== null && viewingMedicalHistory) {

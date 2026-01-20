@@ -97,6 +97,12 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
   };
 
   const handleConfirmDelete = async (password: string) => {
+    setErrorMessage('');
+    const savedPassword = localStorage.getItem('temp_pc');
+    if (!savedPassword || password !== savedPassword) {
+      setErrorMessage('Невірний пароль користувача! Спробуйте ще раз.');
+      return;
+    }
     try {
       if (deleteConfirmId) {
         await api.delete(`/owners/${deleteConfirmId}`, {

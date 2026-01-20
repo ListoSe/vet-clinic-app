@@ -119,6 +119,12 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
   };
 
   const handleConfirmDelete = async (password: string) => {
+    setErrorMessage('');
+    const savedPassword = localStorage.getItem('temp_pc');
+    if (!savedPassword || password !== savedPassword) {
+      setErrorMessage('Невірний пароль користувача! Спробуйте ще раз.');
+      return;
+    }
     try {
       if (selectedFinance?.id) {
         await api.delete(`/appointments/${selectedFinance.id}`, {
@@ -284,7 +290,7 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
                 <option value="DEBT">Борг</option>
               </select>
 
-              {errorMessage && (
+              {errorMessage && !isDeleteModalOpen && (
                 <div className="error-banner">{errorMessage}</div>
               )}
 
