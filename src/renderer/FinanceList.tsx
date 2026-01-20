@@ -25,7 +25,7 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
 
   const [search, setSearch] = useState('');
   const [filterDate, setFilterDate] = useState('');
-  const [sortNewest, setSortNewest] = useState(true); // Стейт для сортування
+  const [sortNewest, setSortNewest] = useState(true);
   const [selectedFinance, setSelectedFinance] = useState<FinanceRecord | null>(
     null,
   );
@@ -36,7 +36,6 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
     try {
       const response = await api.get('/appointments');
 
-      // Логіка трансформації даних
       const mappedData: FinanceRecord[] = response.data.map((app: any) => ({
         id: app.id,
         date: new Date(app.visitDate).toISOString().split('T')[0],
@@ -56,7 +55,6 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
     loadData();
   }, [loadData]);
 
-  // Логіка фільтрації та сортування
   const filteredFinances = finances
     .filter((f) => {
       const matchesSearch =
@@ -73,7 +71,6 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
       return sortNewest ? dateB - dateA : dateA - dateB;
     });
 
-  // Підрахунок суми тільки для відфільтрованих записів
   const totalAmount = filteredFinances.reduce(
     (sum, item) => sum + item.amount,
     0,
@@ -112,7 +109,7 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
     try {
       await api.patch(`/appointments/${selectedFinance.id}`, updateData);
       setSelectedFinance(null);
-      loadData(); // Оновлюємо список
+      loadData();
     } catch (err) {
       alert('Помилка при оновленні даних');
     }
@@ -162,7 +159,6 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
         />
-        {/* Кнопка сортування як у Записах */}
         <button
           onClick={() => setSortNewest(!sortNewest)}
           className="btn btn-secondary"

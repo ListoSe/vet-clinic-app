@@ -9,7 +9,6 @@ interface VetProps {
 }
 
 export default function Vet({ user, onLogout }: VetProps) {
-  // Ветеринар бачить тільки клієнтів, тварин та журнал записів
   const [tab, setTab] = useState('records');
 
   const renderTab = () => {
@@ -29,7 +28,7 @@ export default function Vet({ user, onLogout }: VetProps) {
     <div
       style={{ display: 'flex', height: '100vh', backgroundColor: '#f8fafc' }}
     >
-      {/* Sidebar Навігація */}
+      {/* Sidebar */}
       <aside
         style={{
           width: '260px',

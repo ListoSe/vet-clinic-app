@@ -1,8 +1,8 @@
 /* App.css */
 * {
-  box-sizing: border-box; /* Тепер padding не розширює ширину елемента */
+  box-sizing: border-box;
 }
-/* Глобальні змінні для зручності */
+/* Глобальні змінні */
 :root {
   --primary: #3b82f6;
   --danger: #ef4444;
@@ -16,7 +16,7 @@ body {
   margin: 0;
   font-family: 'Inter', sans-serif;
   height: 100vh;
-  overflow: hidden; /* Щоб не було подвійної прокрутки */
+  overflow: hidden;
 }
 
 /* СТИЛІ ДЛЯ ЛОГІНА */
@@ -26,7 +26,6 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  /* Твій фірмовий градієнт */
   background: linear-gradient(200.96deg, #fedc2a -29.09%, #dd5789 51.77%, #7a2c9e 129.35%);
 }
 
@@ -48,7 +47,7 @@ body {
   font-size: 14px;
   margin-bottom: 1.5rem;
   cursor: pointer;
-  user-select: none; /* Щоб текст не виділявся при кліку */
+  user-select: none;
 }
 
 .checkbox-container input {
@@ -93,7 +92,7 @@ body {
 }
 
 .btn:hover {
-  transform: scale(1.05); /* Твій улюблений хувер */
+  transform: scale(1.05);
   opacity: 0.9;
 }
 
@@ -183,7 +182,7 @@ body {
   padding: 24px;
   border-radius: 12px;
   width: 100%;
-  max-width: 450px; /* Обмежуємо максимальну ширину */
+  max-width: 450px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   position: relative;
 }

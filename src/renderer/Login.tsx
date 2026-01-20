@@ -26,17 +26,13 @@ export default function Login({ setUser }: { setUser: any }) {
         password,
       });
 
-      // Зверни увагу: деструктуризуємо саме access_token (як у твоєму JSON)
       const { user, access_token: accessToken } = response.data;
 
       if (user && accessToken) {
-        // 1. Зберігаємо токен під ключем 'accessToken' (або як ти вказав у axios interceptor)
         localStorage.setItem('accessToken', accessToken);
 
-        // 2. Зберігаємо користувача
         setUser(user);
 
-        // 3. Навігація (roles — це масив рядків великими літерами)
         if (user.roles.includes('ADMIN')) {
           navigate('/admin');
         } else if (user.roles.includes('VET')) {

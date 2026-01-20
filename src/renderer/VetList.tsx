@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import icon from './icon.png';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
-import api from '../api/api'; // Твій налаштований axios з інтерцептором
+import api from '../api/api';
 
 interface Vet {
-  id: string; // В базі це UUID (рядок)
+  id: string;
   name: string;
   phone: string;
-  photo: string | null; // В базі 'photo'
-  info: string | null; // В базі 'info'
+  photo: string | null;
+  info: string | null;
   roles: string[];
 }
 
@@ -21,7 +21,7 @@ interface VetListProps {
 
 export default function VetList({ currentUser }: VetListProps) {
   const SERVER_URL = 'http://localhost:3000';
-  // --- СТАН ДАНИХ (тепер з сервера) ---
+  // --- СТАН ДАНИХ ---
   const [vets, setVets] = useState<Vet[]>([]);
 
   // --- СТАНИ ІНТЕРФЕЙСУ ---
@@ -41,7 +41,6 @@ export default function VetList({ currentUser }: VetListProps) {
   const loadData = useCallback(async () => {
     try {
       const res = await api.get<Vet[]>('/users');
-      // Фільтруємо тільки ветеринарів
       const data = Array.isArray(res.data) ? res.data : [];
       setVets(data.filter((u) => u.roles?.includes('VET')));
     } catch (e) {
@@ -53,10 +52,8 @@ export default function VetList({ currentUser }: VetListProps) {
     loadData();
   }, [loadData]);
 
-  // Синхронізуємо превью при відкритті модалки
   useEffect(() => {
     if (isModalOpen) {
-      // Беремо фото саме з поля .photo, як воно приходить з бази
       setPhotoPreview(editingVet?.photo || null);
     } else {
       setPhotoPreview(null);
@@ -77,10 +74,8 @@ export default function VetList({ currentUser }: VetListProps) {
     e.preventDefault();
     const formElement = e.currentTarget;
 
-    // 1. Використовуємо FormData замість звичайного об'єкта
     const formData = new FormData();
 
-    // 2. Додаємо текстові дані з форми
     formData.append(
       'name',
       (formElement.elements.namedItem('name') as HTMLInputElement).value,
@@ -95,7 +90,6 @@ export default function VetList({ currentUser }: VetListProps) {
         .value,
     );
 
-    // 3. Отримуємо файл з інпуту (а не Base64 рядок)
     const fileInput = document.getElementById(
       'photo-upload',
     ) as HTMLInputElement;
@@ -105,12 +99,10 @@ export default function VetList({ currentUser }: VetListProps) {
 
     try {
       if (editingVet) {
-        // Оновлення існуючого
         await api.patch(`/users/${editingVet.id}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       } else {
-        // Створення нового (додаємо обов'язкові поля для бекенда)
         formData.append('login', `vet_${Date.now()}`);
         formData.append('password', 'TemporaryPassword123');
         formData.append('roles', 'VET');
@@ -121,9 +113,8 @@ export default function VetList({ currentUser }: VetListProps) {
       }
 
       setIsModalOpen(false);
-      loadData(); // Перезавантажуємо список, щоб побачити зміни та фото
+      loadData();
     } catch (err: any) {
-      // Обробка помилки 409 (унікальність телефону)
       if (err.response?.status === 409) {
         alert('Помилка: Користувач з таким номером телефону вже існує!');
       } else {
@@ -134,8 +125,6 @@ export default function VetList({ currentUser }: VetListProps) {
   };
 
   const handleConfirmDelete = async (password: string) => {
-    // Тут можна залишити перевірку пароля або просто видаляти через API
-    // Для простоти робимо запит до API:
     try {
       if (deleteConfirmId) {
         await api.delete(`/users/${deleteConfirmId}`, {
@@ -281,15 +270,14 @@ export default function VetList({ currentUser }: VetListProps) {
                     margin: '0 auto',
                   }}
                 >
-                  {/* Пріоритет: нове прев'ю -> старе фото з бази -> дефолтна іконка */}
                   {photoPreview || editingVet?.photo ? (
                     <img
                       src={
-                        photoPreview?.startsWith('data:image') // 1. Якщо це нове завантажене фото (Base64)
+                        photoPreview?.startsWith('data:image')
                           ? photoPreview
-                          : photoPreview || editingVet?.photo // 2. Якщо це шлях з бази
+                          : photoPreview || editingVet?.photo
                             ? `${SERVER_URL}${photoPreview || editingVet?.photo}`
-                            : icon // 3. Якщо фото взагалі немає
+                            : icon
                       }
                       alt="Preview"
                       style={{

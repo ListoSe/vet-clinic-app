@@ -5,7 +5,7 @@ import api from '../api/api';
 interface Pet {
   id: string;
   name: string;
-  type: string; // собака, кіт і т.д.
+  type: string;
 }
 
 interface Owner {
@@ -13,7 +13,7 @@ interface Owner {
   name: string;
   phone: string;
   email?: string;
-  petModels: Pet[]; // Масив тварин власника
+  petModels: Pet[];
 }
 
 interface OwnersListProps {
@@ -47,7 +47,6 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
     рибка: '🐟',
   };
 
-  // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
   const loadData = useCallback(async () => {
     try {
       const res = await api.get<Owner[]>('/owners');
@@ -217,7 +216,7 @@ export default function OwnersList({ currentUser }: OwnersListProps) {
         </tbody>
       </table>
 
-      {/* Модалка (залишаємо поля, додаємо список тварин для перегляду) */}
+      {/* Модалка */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

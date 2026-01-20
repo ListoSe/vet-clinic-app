@@ -31,11 +31,10 @@ export default function MainAppAdmin({ user, onLogout }: AdminProps) {
   };
 
   return (
-    // Використовуємо flex-контейнер для всього екрану
     <div
       style={{ display: 'flex', height: '100vh', backgroundColor: '#f8fafc' }}
     >
-      {/* Sidebar Навигация */}
+      {/* Sidebar */}
       <aside
         style={{
           width: '260px',
@@ -60,7 +59,6 @@ export default function MainAppAdmin({ user, onLogout }: AdminProps) {
         </div>
 
         <nav style={{ flex: 1 }}>
-          {/* Використовуємо класи з App.css для хуверів і активного стану */}
           <div
             className={`nav-item ${tab === 'vets' ? 'active' : ''}`}
             onClick={() => setTab('vets')}
@@ -149,7 +147,6 @@ export default function MainAppAdmin({ user, onLogout }: AdminProps) {
                 {user?.email}
               </div>
             </div>
-            {/* Кнопка тепер використовує твій клас .btn з App.css (з ефектом scale) */}
             <button
               onClick={onLogout}
               className="btn"

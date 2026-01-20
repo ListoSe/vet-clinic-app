@@ -57,7 +57,6 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
 
       setRecords(recsRes.data);
       setOwners(ownersRes.data);
-      // Фільтруємо лише ветеринарів
       setVets(usersRes.data.filter((u: any) => u.roles.includes('VET')));
     } catch (err) {
       console.error('Помилка завантаження списків:', err);
@@ -75,7 +74,6 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
     }
   }, [selectedRecord]);
 
-  // Ефект для завантаження тварин, коли вибрано власника
   useEffect(() => {
     if (selectedOwnerId) {
       api
@@ -197,7 +195,6 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
         >
           {sortNewest ? '📅 Спочатку нові' : '📅 Спочатку старі'}
         </button>
-        {/* Кнопка додавання доступна всім (або можна isAdmin) */}
         <button
           onClick={() => {
             setSelectedOwnerId('');

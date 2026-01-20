@@ -1,6 +1,6 @@
 import React, { JSX, useState } from 'react';
 import {
-  BrowserRouter as Router, // Заменили для корректной работы путей
+  BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
@@ -11,7 +11,6 @@ import Admin from './MainAppAdmin';
 
 import './App.css';
 
-// Компонент защиты маршрутов
 function ProtectedRoute({
   user,
   requiredRole,
@@ -21,10 +20,8 @@ function ProtectedRoute({
   requiredRole: string;
   children: JSX.Element;
 }): JSX.Element {
-  // Если пользователя нет — на страницу входа
   if (!user) return <Navigate to="/" replace />;
 
-  // Сравниваем роли без учета регистра, чтобы избежать конфликтов (admin vs ADMIN)
   const rolesUpper = (user.roles || []).map((r: string) =>
     String(r).toUpperCase(),
   );
@@ -41,23 +38,20 @@ export default function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // Функция для входа: сохраняет и в state, и в память браузера
   const handleLogin = (userData: any) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  // Функция для выхода (пригодится позже)
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('user');
-    localStorage.removeItem('accessToken'); // Обов'язково чистимо токен
+    localStorage.removeItem('accessToken');
   };
 
   return (
     <Router>
       <Routes>
-        {/* Если пользователь уже вошел, при заходе на "/" редиректим его по роли */}
         <Route
           path="/"
           element={
@@ -92,7 +86,6 @@ export default function App() {
           }
         />
 
-        {/* Редирект для несуществующих страниц */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

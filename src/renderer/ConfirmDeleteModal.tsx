@@ -23,7 +23,7 @@ export default function ConfirmDeleteModal({
 
   const handleConfirm = () => {
     onConfirm(password);
-    setPassword(''); // Очищуємо пароль після спроби
+    setPassword('');
   };
 
   const handleClose = () => {
