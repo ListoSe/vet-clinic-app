@@ -165,7 +165,8 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
 
   const handleConfirmDelete = async (password: string) => {
     setErrorMessage('');
-    const savedPassword = localStorage.getItem('temp_pc');
+    const savedPassword =
+      localStorage.getItem('temp_pc') || sessionStorage.getItem('temp_pc');
     if (!savedPassword || password !== savedPassword) {
       setErrorMessage('Невірний пароль користувача! Спробуйте ще раз.');
       return;
@@ -253,7 +254,15 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
               }}
             >
               <td>
-                {r.visitDate ? new Date(r.visitDate).toLocaleDateString() : '—'}
+                {r.visitDate
+                  ? new Date(r.visitDate).toLocaleString('uk-UA', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : '—'}
               </td>
               <td style={{ fontWeight: '600' }}>🐾 {r.pet?.name}</td>
               <td>{r.user?.name}</td>
@@ -341,12 +350,22 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                     type="datetime-local"
                     defaultValue={
                       selectedRecord?.visitDate
-                        ? selectedRecord.visitDate.slice(0, 16)
+                        ? (() => {
+                            const d = new Date(selectedRecord.visitDate);
+                            d.setMinutes(
+                              d.getMinutes() - d.getTimezoneOffset(),
+                            );
+                            return d.toISOString().slice(0, 16);
+                          })()
                         : ''
                     }
                     className="input-field"
                     required
-                    min={`${new Date().toISOString().split('T')[0]}T00:00`}
+                    min={
+                      !selectedRecord
+                        ? `${new Date().toISOString().split('T')[0]}T00:00`
+                        : undefined
+                    }
                     step="1800"
                     readOnly={isVet && !!selectedRecord}
                   />
@@ -423,7 +442,6 @@ export default function RecordsList({ currentUser }: RecordsListProps) {
                 </button>
               </div>
 
-              {/* Видалення тільки для Адміна */}
               {selectedRecord && isAdmin && (
                 <button
                   type="button"

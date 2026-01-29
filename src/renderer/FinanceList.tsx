@@ -38,14 +38,18 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
     try {
       const response = await api.get('/appointments');
 
-      const mappedData: FinanceRecord[] = response.data.map((app: any) => ({
-        id: app.id,
-        date: new Date(app.visitDate).toISOString().split('T')[0],
-        clientName: app.pet?.owner?.name || 'Невідомий клієнт',
-        service: app.reason,
-        amount: app.amount || 0,
-        status: app.paymentStatus || 'PENDING',
-      }));
+      const mappedData: FinanceRecord[] = response.data
+        .filter(
+          (app: any) => app.status !== 'CANCELLED' && app.status !== 'NEW',
+        )
+        .map((app: any) => ({
+          id: app.id,
+          date: new Date(app.visitDate).toISOString().split('T')[0],
+          clientName: app.pet?.owner?.name || 'Невідомий клієнт',
+          service: app.reason,
+          amount: app.amount || 0,
+          status: app.paymentStatus || 'PENDING',
+        }));
 
       setFinances(mappedData);
     } catch {
@@ -120,7 +124,8 @@ export default function FinanceList({ currentUser }: FinanceListProps) {
 
   const handleConfirmDelete = async (password: string) => {
     setErrorMessage('');
-    const savedPassword = localStorage.getItem('temp_pc');
+    const savedPassword =
+      localStorage.getItem('temp_pc') || sessionStorage.getItem('temp_pc');
     if (!savedPassword || password !== savedPassword) {
       setErrorMessage('Невірний пароль користувача! Спробуйте ще раз.');
       return;

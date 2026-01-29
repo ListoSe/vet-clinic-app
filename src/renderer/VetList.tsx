@@ -98,10 +98,6 @@ export default function VetList({ currentUser }: VetListProps) {
       (formElement.elements.namedItem('login') as HTMLInputElement).value,
     );
     formData.append(
-      'login',
-      (formElement.elements.namedItem('login') as HTMLInputElement).value,
-    );
-    formData.append(
       'spec',
       (formElement.elements.namedItem('spec') as HTMLInputElement).value,
     );
@@ -148,7 +144,8 @@ export default function VetList({ currentUser }: VetListProps) {
 
   const handleConfirmDelete = async (password: string) => {
     setErrorMessage('');
-    const savedPassword = localStorage.getItem('temp_pc');
+    const savedPassword =
+      localStorage.getItem('temp_pc') || sessionStorage.getItem('temp_pc');
     if (!savedPassword || password !== savedPassword) {
       setErrorMessage('Невірний пароль користувача! Спробуйте ще раз.');
       return;

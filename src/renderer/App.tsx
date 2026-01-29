@@ -33,19 +33,25 @@ function ProtectedRoute({
 
 export default function App() {
   const [user, setUser] = useState<any>(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser =
+      localStorage.getItem('user') || sessionStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  const handleLogin = (userData: any) => {
+  const handleLogin = (userData: any, remember: boolean) => {
+    const storage = remember ? localStorage : sessionStorage;
+    storage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('temp_pc');
+    sessionStorage.removeItem('temp_pc');
     localStorage.removeItem('accessToken');
+    sessionStorage.removeItem('accessToken');
   };
 
   return (

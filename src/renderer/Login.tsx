@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
@@ -9,6 +9,24 @@ export default function Login({ setUser }: { setUser: any }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const rawUser =
+      localStorage.getItem('user') || sessionStorage.getItem('user');
+    const token =
+      localStorage.getItem('accessToken') ||
+      sessionStorage.getItem('accessToken');
+    if (rawUser && token) {
+      const storedUser = JSON.parse(rawUser);
+      setUser(storedUser);
+
+      if (storedUser.roles && storedUser.roles.includes('ADMIN')) {
+        navigate('/admin');
+      } else if (storedUser.roles && storedUser.roles.includes('VET')) {
+        navigate('/vet');
+      }
+    }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +47,10 @@ export default function Login({ setUser }: { setUser: any }) {
       const { user, access_token: accessToken } = response.data;
 
       if (user && accessToken) {
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('temp_pc', password); // Переробити на запрос до бекенду пізніше
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem('accessToken', accessToken);
+        storage.setItem('user', JSON.stringify(user));
+        storage.setItem('temp_pc', password); // Переробити на запрос до бекенду пізніше
         setUser(user);
 
         if (user.roles.includes('ADMIN')) {
