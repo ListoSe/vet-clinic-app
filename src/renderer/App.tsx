@@ -32,7 +32,6 @@ function ProtectedRoute({
 }
 
 export default function App() {
-  // Инициализируем состояние из localStorage, чтобы не разлогиниваться при F5
   const [user, setUser] = useState<any>(() => {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;

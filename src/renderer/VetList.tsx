@@ -9,7 +9,9 @@ interface Vet {
   phone: string;
   photo: string | null;
   info: string | null;
+  spec: string | null;
   roles: string[];
+  login: string;
 }
 
 interface VetListProps {
@@ -91,6 +93,25 @@ export default function VetList({ currentUser }: VetListProps) {
       (formElement.elements.namedItem('description') as HTMLTextAreaElement)
         .value,
     );
+    formData.append(
+      'login',
+      (formElement.elements.namedItem('login') as HTMLInputElement).value,
+    );
+    formData.append(
+      'login',
+      (formElement.elements.namedItem('login') as HTMLInputElement).value,
+    );
+    formData.append(
+      'spec',
+      (formElement.elements.namedItem('spec') as HTMLInputElement).value,
+    );
+
+    const password = (
+      formElement.elements.namedItem('password') as HTMLInputElement
+    ).value;
+    if (password) {
+      formData.append('password', password);
+    }
 
     const fileInput = document.getElementById(
       'photo-upload',
@@ -105,8 +126,6 @@ export default function VetList({ currentUser }: VetListProps) {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       } else {
-        formData.append('login', `vet_${Date.now()}`);
-        formData.append('password', 'TemporaryPassword123');
         formData.append('roles', 'VET');
 
         await api.post('/users', formData, {
@@ -152,10 +171,16 @@ export default function VetList({ currentUser }: VetListProps) {
   };
 
   const filteredVets = vets
-    .filter((v) => (v.name || '').toLowerCase().includes(search.toLowerCase()))
+    .filter((v) => {
+      const searchTerm = search.toLowerCase();
+      const nameMatch = (v.name || '').toLowerCase().includes(searchTerm);
+      const specMatch = (v.spec || '').toLowerCase().includes(searchTerm);
+      return nameMatch || specMatch;
+    })
     .sort((a, b) => {
       const nameA = (a.name || '').toLowerCase();
       const nameB = (b.name || '').toLowerCase();
+      if (nameA === nameB) return 0;
       return nameA < nameB ? (sortAsc ? -1 : 1) : sortAsc ? 1 : -1;
     });
 
@@ -164,7 +189,7 @@ export default function VetList({ currentUser }: VetListProps) {
       {/* Панель керування */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
         <input
-          placeholder="Пошук лікаря..."
+          placeholder="Пошук лікаря за ПІБ або Спеціалізацією..."
           className="input-field"
           style={{ flex: 1, marginBottom: 0 }}
           value={search}
@@ -198,6 +223,7 @@ export default function VetList({ currentUser }: VetListProps) {
           <tr>
             <th style={{ width: '60px' }}>Фото</th>
             <th>ПІБ Ветеринара</th>
+            <th>Спеціалізація</th>
             <th>Телефон</th>
             <th style={{ textAlign: 'right' }}>Дії</th>
           </tr>
@@ -205,7 +231,7 @@ export default function VetList({ currentUser }: VetListProps) {
         <tbody>
           {errorLoadMessage && (
             <tr>
-              <td colSpan={4}>
+              <td colSpan={5}>
                 <div className="error-banner">{errorLoadMessage}</div>
               </td>
             </tr>
@@ -235,6 +261,7 @@ export default function VetList({ currentUser }: VetListProps) {
                 />
               </td>
               <td style={{ fontWeight: '600' }}>{v.name || 'Без імені'}</td>
+              <td style={{ color: 'var(--text-light)' }}>{v.spec || '—'}</td>
               <td style={{ color: 'var(--text-light)' }}>{v.phone || '—'}</td>
               <td style={{ textAlign: 'right' }}>
                 {isAdmin && (
@@ -351,11 +378,41 @@ export default function VetList({ currentUser }: VetListProps) {
               />
 
               <label className="input-label">Спеціалізація</label>
+              <input
+                name="spec"
+                type="text"
+                placeholder="Наприклад: Терапевт"
+                defaultValue={editingVet?.spec || ''}
+                className="input-field"
+              />
+
+              <label className="input-label">Информація про лікаря</label>
               <textarea
                 name="description"
                 defaultValue={editingVet?.info || ''}
                 className="input-field"
                 style={{ height: '80px', resize: 'none' }}
+              />
+
+              <label className="input-label">Логін</label>
+              <input
+                name="login"
+                type="text"
+                defaultValue={editingVet?.login || ''}
+                required
+                className="input-field"
+              />
+
+              <label className="input-label">
+                {editingVet
+                  ? 'Новий пароль (залиште порожнім, якщо не змінюєте)'
+                  : 'Пароль'}
+              </label>
+              <input
+                name="password"
+                type="password"
+                required={!editingVet}
+                className="input-field"
               />
 
               {errorMessage && (
